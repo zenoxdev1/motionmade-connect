@@ -14,6 +14,7 @@ import {
   Drum,
   Piano,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Index = () => {
   return (
@@ -50,14 +51,15 @@ const Index = () => {
             </a>
           </div>
           <div className="flex items-center space-x-3">
-            <Button variant="ghost" size="sm">
-              Sign In
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/login">Sign In</Link>
             </Button>
             <Button
               size="sm"
               className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              asChild
             >
-              Get Started
+              <Link to="/signup">Get Started</Link>
             </Button>
           </div>
         </div>
@@ -89,10 +91,13 @@ const Index = () => {
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg px-8 py-6 h-auto"
+                asChild
               >
-                <Play className="w-5 h-5 mr-2" />
-                Start Creating Today
-                <ArrowRight className="w-5 h-5 ml-2" />
+                <Link to="/signup">
+                  <Play className="w-5 h-5 mr-2" />
+                  Start Creating Today
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Link>
               </Button>
               <Button
                 variant="outline"
@@ -259,10 +264,13 @@ const Index = () => {
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-lg px-8 py-6 h-auto"
+                  asChild
                 >
-                  <Music className="w-5 h-5 mr-2" />
-                  Start Your Journey
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <Link to="/signup">
+                    <Music className="w-5 h-5 mr-2" />
+                    Start Your Journey
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Link>
                 </Button>
                 <Button
                   variant="outline"
