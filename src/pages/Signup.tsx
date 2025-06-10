@@ -306,10 +306,18 @@ const Signup = () => {
             </div>
 
             <div className="flex items-start space-x-2">
-              <Checkbox
-                {...register("agreeToTerms")}
-                id="agreeToTerms"
-                className="border-purple-500/30 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600 mt-1"
+              <Controller
+                name="agreeToTerms"
+                control={control}
+                defaultValue={false}
+                render={({ field }) => (
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    id="agreeToTerms"
+                    className="border-purple-500/30 data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600 mt-1"
+                  />
+                )}
               />
               <Label
                 htmlFor="agreeToTerms"
