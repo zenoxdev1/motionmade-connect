@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Mail, Lock, ArrowLeft, Github, Chrome } from "lucide-react";
+import { Music, Mail, Lock, ArrowLeft, Chrome } from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -128,15 +128,6 @@ const Login = () => {
             >
               <Chrome className="w-4 h-4 mr-2" />
               {isGoogleLoading ? "Signing in..." : "Continue with Google"}
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full border-purple-500/30 hover:bg-purple-500/10"
-              type="button"
-              disabled
-            >
-              <Github className="w-4 h-4 mr-2" />
-              Continue with GitHub (Soon)
             </Button>
           </div>
 
