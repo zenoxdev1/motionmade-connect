@@ -154,7 +154,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // If backend is not running, fall back to mock behavior for demo
         if (response.status === 0 || !response.status) {
           console.log("Backend not available, checking demo credentials");
-          if (email === "demo@motionconnect.com" && password === "password123") {
+          if (
+            email === "demo@motionconnect.com" &&
+            password === "password123"
+          ) {
             const mockUser: User = {
               id: "demo_user",
               email: "demo@motionconnect.com",
@@ -207,7 +210,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log("Mock sign in successful:", mockUser);
           return;
         } else {
-          throw new Error("Network error: Unable to connect to server. Try demo credentials: demo@motionconnect.com / password123");
+          throw new Error(
+            "Network error: Unable to connect to server. Try demo credentials: demo@motionconnect.com / password123",
+          );
         }
       }
       throw error;
@@ -228,7 +233,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
         // Configure Google OAuth
         google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "173450104257-3iaqb7usr93lfuuk0uv6p1o1dktqpunk.apps.googleusercontent.com",
+          client_id:
+            import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+            "173450104257-3iaqb7usr93lfuuk0uv6p1o1dktqpunk.apps.googleusercontent.com",
           callback: async (response: any) => {
             try {
               console.log("Google callback received:", response);
@@ -363,7 +370,7 @@ async function validateToken(token: string): Promise<User | null> {
     const response = await fetch(`${API_BASE_URL}/auth/me`, {
       method: "GET",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });
@@ -452,7 +459,6 @@ async function validateToken(token: string): Promise<User | null> {
 
     return null;
   }
-}
 }
 
 // Extend Window interface for Google OAuth
