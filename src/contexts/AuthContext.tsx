@@ -67,20 +67,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const signUp = async (data: SignUpData): Promise<void> => {
     setLoading(true);
     try {
+      console.log("Attempting sign up with:", { ...data, password: "***" });
       // In a real app, this would be an API call
       const response = await mockApiCall("/auth/signup", {
         method: "POST",
         body: JSON.stringify(data),
       });
 
+      console.log("Sign up response:", response);
+
       if (response.success) {
         const { user: userData, token } = response.data;
         localStorage.setItem("authToken", token);
         setUser(userData);
+        console.log("Sign up successful, user set:", userData);
       } else {
+        console.error("Sign up failed:", response.error);
         throw new Error(response.error || "Signup failed");
       }
     } catch (error) {
+      console.error("Sign up error:", error);
       throw error;
     } finally {
       setLoading(false);
@@ -90,20 +96,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const signIn = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
+      console.log("Attempting sign in with:", { email, password: "***" });
       // In a real app, this would be an API call
       const response = await mockApiCall("/auth/signin", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
 
+      console.log("Sign in response:", response);
+
       if (response.success) {
         const { user: userData, token } = response.data;
         localStorage.setItem("authToken", token);
         setUser(userData);
+        console.log("Sign in successful, user set:", userData);
       } else {
+        console.error("Sign in failed:", response.error);
         throw new Error(response.error || "Sign in failed");
       }
     } catch (error) {
+      console.error("Sign in error:", error);
       throw error;
     } finally {
       setLoading(false);
