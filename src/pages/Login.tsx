@@ -10,11 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import { Music, Mail, Lock, ArrowLeft, Github, Chrome } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -25,6 +28,14 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 const Login = () => {
+  const { signIn, signInWithGoogle } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const from = location.state?.from?.pathname || "/dashboard";
+
   const {
     register,
     handleSubmit,
@@ -34,10 +45,46 @@ const Login = () => {
   });
 
   const onSubmit = async (data: LoginForm) => {
-    // Simulate API call
-    console.log("Login data:", data);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // Handle login logic here
+    try {
+      await signIn(data.email, data.password);
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
+      });
+      navigate(from, { replace: true });
+    } catch (error) {
+      toast({
+        title: "Sign in failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Invalid email or password. Try: demo@motionconnect.com / password123",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      toast({
+        title: "Welcome!",
+        description: "You have successfully signed in with Google.",
+      });
+      navigate(from, { replace: true });
+    } catch (error) {
+      toast({
+        title: "Google sign in failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to sign in with Google",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   return (
@@ -76,17 +123,20 @@ const Login = () => {
               variant="outline"
               className="w-full border-purple-500/30 hover:bg-purple-500/10"
               type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isGoogleLoading}
             >
               <Chrome className="w-4 h-4 mr-2" />
-              Continue with Google
+              {isGoogleLoading ? "Signing in..." : "Continue with Google"}
             </Button>
             <Button
               variant="outline"
               className="w-full border-purple-500/30 hover:bg-purple-500/10"
               type="button"
+              disabled
             >
               <Github className="w-4 h-4 mr-2" />
-              Continue with GitHub
+              Continue with GitHub (Soon)
             </Button>
           </div>
 
@@ -174,14 +224,19 @@ const Login = () => {
             </Button>
           </form>
 
-          <div className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-purple-400 hover:text-purple-300 transition-colors font-medium"
-            >
-              Sign up here
-            </Link>
+          <div className="text-center space-y-2">
+            <div className="text-xs text-muted-foreground bg-muted/20 p-2 rounded">
+              <strong>Demo:</strong> demo@motionconnect.com / password123
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Don't have an account?{" "}
+              <Link
+                to="/signup"
+                className="text-purple-400 hover:text-purple-300 transition-colors font-medium"
+              >
+                Sign up here
+              </Link>
+            </div>
           </div>
         </CardContent>
       </Card>

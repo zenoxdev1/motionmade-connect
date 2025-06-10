@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 import {
   Music,
   Mail,
@@ -30,10 +31,12 @@ import {
   Piano,
   Drum,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
 
 const signupSchema = z
   .object({
@@ -54,6 +57,14 @@ const signupSchema = z
 type SignupForm = z.infer<typeof signupSchema>;
 
 const Signup = () => {
+  const { signUp, signInWithGoogle } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const from = location.state?.from?.pathname || "/dashboard";
+
   const {
     register,
     handleSubmit,
@@ -64,10 +75,49 @@ const Signup = () => {
   });
 
   const onSubmit = async (data: SignupForm) => {
-    // Simulate API call
-    console.log("Signup data:", data);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    // Handle signup logic here
+    try {
+      await signUp({
+        fullName: data.fullName,
+        email: data.email,
+        password: data.password,
+        instrument: data.instrument,
+      });
+      toast({
+        title: "Welcome to Motion Connect! 🎵",
+        description: "Your account has been created successfully.",
+      });
+      navigate(from, { replace: true });
+    } catch (error) {
+      toast({
+        title: "Sign up failed",
+        description:
+          error instanceof Error ? error.message : "Failed to create account",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      toast({
+        title: "Welcome to Motion Connect! 🎵",
+        description: "Your account has been created successfully with Google.",
+      });
+      navigate(from, { replace: true });
+    } catch (error) {
+      toast({
+        title: "Google sign up failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to sign up with Google",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   const instruments = [
@@ -119,17 +169,20 @@ const Signup = () => {
               variant="outline"
               className="w-full border-purple-500/30 hover:bg-purple-500/10"
               type="button"
+              onClick={handleGoogleSignUp}
+              disabled={isGoogleLoading}
             >
               <Chrome className="w-4 h-4 mr-2" />
-              Continue with Google
+              {isGoogleLoading ? "Creating account..." : "Continue with Google"}
             </Button>
             <Button
               variant="outline"
               className="w-full border-purple-500/30 hover:bg-purple-500/10"
               type="button"
+              disabled
             >
               <Github className="w-4 h-4 mr-2" />
-              Continue with GitHub
+              Continue with GitHub (Soon)
             </Button>
           </div>
 
