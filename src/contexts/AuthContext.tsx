@@ -10,6 +10,13 @@ export interface User {
   createdAt: string;
 }
 
+export interface SignUpData {
+  fullName: string;
+  email: string;
+  password: string;
+  instrument?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -18,13 +25,6 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
-}
-
-export interface SignUpData {
-  fullName: string;
-  email: string;
-  password: string;
-  instrument?: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
