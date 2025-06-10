@@ -29,10 +29,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock API endpoints - replace with your actual backend
+// API endpoints
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:3001/api";
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -68,22 +67,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoading(true);
     try {
       console.log("Attempting sign up with:", { ...data, password: "***" });
-      // In a real app, this would be an API call
-      const response = await mockApiCall("/auth/signup", {
+      // Make API call to backend
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
       });
 
-      console.log("Sign up response:", response);
+      const result = await response.json();
 
-      if (response.success) {
-        const { user: userData, token } = response.data;
+      console.log("Sign up response:", result);
+
+      if (result.success) {
+        const { user: userData, token } = result.data;
         localStorage.setItem("authToken", token);
         setUser(userData);
         console.log("Sign up successful, user set:", userData);
       } else {
-        console.error("Sign up failed:", response.error);
-        throw new Error(response.error || "Signup failed");
+        console.error("Sign up failed:", result.error);
+        throw new Error(result.error || "Signup failed");
       }
     } catch (error) {
       console.error("Sign up error:", error);
@@ -97,22 +101,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     setLoading(true);
     try {
       console.log("Attempting sign in with:", { email, password: "***" });
-      // In a real app, this would be an API call
-      const response = await mockApiCall("/auth/signin", {
+      // Make API call to backend
+      const response = await fetch(`${API_BASE_URL}/auth/signin`, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ email, password }),
       });
 
-      console.log("Sign in response:", response);
+      const result = await response.json();
+      console.log("Sign in response:", result);
 
-      if (response.success) {
-        const { user: userData, token } = response.data;
+      if (result.success) {
+        const { user: userData, token } = result.data;
         localStorage.setItem("authToken", token);
         setUser(userData);
         console.log("Sign in successful, user set:", userData);
       } else {
-        console.error("Sign in failed:", response.error);
-        throw new Error(response.error || "Sign in failed");
+        console.error("Sign in failed:", result.error);
+        throw new Error(result.error || "Sign in failed");
       }
     } catch (error) {
       console.error("Sign in error:", error);
@@ -136,10 +144,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           callback: async (response: any) => {
             try {
               // Send the credential to your backend
-              const authResponse = await mockApiCall("/auth/google", {
+              const apiResponse = await fetch(`${API_BASE_URL}/auth/google`, {
                 method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
                 body: JSON.stringify({ credential: response.credential }),
               });
+
+              const authResponse = await apiResponse.json();
 
               if (authResponse.success) {
                 const { user: userData, token } = authResponse.data;
@@ -221,135 +234,21 @@ export const useAuth = () => {
   return context;
 };
 
-// Mock API function - replace with your actual API calls
-async function mockApiCall(endpoint: string, options: any = {}) {
-  // Simulate network delay
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  const url = `${API_BASE_URL}${endpoint}`;
-
-  // Mock responses for different endpoints
-  if (endpoint === "/auth/signup") {
-    const { fullName, email, password, instrument } = JSON.parse(options.body);
-
-    // Mock validation
-    if (!email || !password || !fullName) {
-      return { success: false, error: "Missing required fields" };
-    }
-
-    if (password.length < 8) {
-      return {
-        success: false,
-        error: "Password must be at least 8 characters",
-      };
-    }
-
-    // Mock user creation
-    const user: User = {
-      id: "user_" + Date.now(),
-      email,
-      fullName,
-      instrument,
-      provider: "email",
-      createdAt: new Date().toISOString(),
-    };
-
-    const token = "mock_token_" + Date.now();
-
-    return {
-      success: true,
-      data: { user, token },
-    };
-  }
-
-  if (endpoint === "/auth/signin") {
-    const { email, password } = JSON.parse(options.body);
-
-    // Mock validation
-    if (email === "demo@motionconnect.com" && password === "password123") {
-      const user: User = {
-        id: "demo_user",
-        email: "demo@motionconnect.com",
-        fullName: "Demo User",
-        instrument: "guitar",
-        provider: "email",
-        createdAt: "2024-01-01T00:00:00Z",
-      };
-
-      const token = "demo_token_" + Date.now();
-
-      return {
-        success: true,
-        data: { user, token },
-      };
-    }
-
-    return { success: false, error: "Invalid email or password" };
-  }
-
-  if (endpoint === "/auth/google") {
-    // Mock Google OAuth response
-    const user: User = {
-      id: "google_user_" + Date.now(),
-      email: "user@gmail.com",
-      fullName: "Google User",
-      avatar: "https://via.placeholder.com/40",
-      provider: "google",
-      createdAt: new Date().toISOString(),
-    };
-
-    const token = "google_token_" + Date.now();
-
-    return {
-      success: true,
-      data: { user, token },
-    };
-  }
-
-  return { success: false, error: "Endpoint not found" };
-}
-
 // Validate auth token
 async function validateToken(token: string): Promise<User | null> {
   try {
-    // In a real app, you'd validate the token with your backend
-    // For now, we'll just check if it's a valid format and not expired
-    if (
-      token.startsWith("mock_token_") ||
-      token.startsWith("demo_token_") ||
-      token.startsWith("google_token_")
-    ) {
-      // Mock user data based on token type
-      if (token.startsWith("demo_token_")) {
-        return {
-          id: "demo_user",
-          email: "demo@motionconnect.com",
-          fullName: "Demo User",
-          instrument: "guitar",
-          provider: "email",
-          createdAt: "2024-01-01T00:00:00Z",
-        };
-      }
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-      if (token.startsWith("google_token_")) {
-        return {
-          id: "google_user",
-          email: "user@gmail.com",
-          fullName: "Google User",
-          avatar: "https://via.placeholder.com/40",
-          provider: "google",
-          createdAt: new Date().toISOString(),
-        };
-      }
+    const result = await response.json();
 
-      // Default mock user for other tokens
-      return {
-        id: "user_123",
-        email: "user@motionconnect.com",
-        fullName: "Test User",
-        provider: "email",
-        createdAt: new Date().toISOString(),
-      };
+    if (result.success) {
+      return result.data.user;
     }
 
     return null;
