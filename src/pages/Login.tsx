@@ -129,15 +129,6 @@ const Login = () => {
               <Chrome className="w-4 h-4 mr-2" />
               {isGoogleLoading ? "Signing in..." : "Continue with Google"}
             </Button>
-            <Button
-              variant="outline"
-              className="w-full border-purple-500/30 hover:bg-purple-500/10"
-              type="button"
-              disabled
-            >
-              <Github className="w-4 h-4 mr-2" />
-              Continue with GitHub (Soon)
-            </Button>
           </div>
 
           <div className="relative">
