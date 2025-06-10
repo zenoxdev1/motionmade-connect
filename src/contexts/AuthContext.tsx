@@ -30,7 +30,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Mock API endpoints - replace with your actual backend
-const API_BASE_URL = process.env.VITE_API_URL || "http://localhost:3001/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -119,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         // Configure Google OAuth
         google.accounts.id.initialize({
           client_id:
-            process.env.VITE_GOOGLE_CLIENT_ID || "your-google-client-id",
+            import.meta.env.VITE_GOOGLE_CLIENT_ID || "your-google-client-id",
           callback: async (response: any) => {
             try {
               // Send the credential to your backend
