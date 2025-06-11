@@ -16,6 +16,7 @@ export interface SignUpData {
   email: string;
   password: string;
   instrument?: string;
+  username?: string;
 }
 
 interface AuthContextType {
