@@ -25,6 +25,7 @@ import {
   Volume2,
   Eye,
   EyeOff,
+  AlertTriangle,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -72,6 +73,7 @@ const UploadTrack = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [trackData, setTrackData] = useState<TrackData>({
     title: "",
     description: "",
@@ -189,11 +191,12 @@ const UploadTrack = () => {
   }, []);
 
   const handleInputChange = useCallback(
-    (field: keyof TrackData, value: string | boolean) => {
+    (field: keyof TrackData, value: string | boolean | number) => {
       setTrackData((prev) => ({
         ...prev,
         [field]: value,
       }));
+      setUploadError(null); // Clear any previous errors
     },
     [],
   );
@@ -203,6 +206,8 @@ const UploadTrack = () => {
       const file = event.target.files?.[0];
       if (!file) return;
 
+      setUploadError(null);
+
       // Validate file type
       const allowedTypes = [
         "audio/mp3",
@@ -210,22 +215,28 @@ const UploadTrack = () => {
         "audio/wav",
         "audio/ogg",
         "audio/aac",
+        "audio/x-wav",
+        "audio/wave",
       ];
       if (!allowedTypes.includes(file.type)) {
+        const error = "Please select an MP3, WAV, OGG, or AAC file.";
+        setUploadError(error);
         toast({
           title: "Invalid file type",
-          description: "Please select an MP3, WAV, OGG, or AAC file.",
+          description: error,
           variant: "destructive",
         });
         return;
       }
 
-      // Validate file size (max 50MB)
-      const maxSize = 50 * 1024 * 1024;
+      // Validate file size (max 25MB to avoid localStorage issues)
+      const maxSize = 25 * 1024 * 1024;
       if (file.size > maxSize) {
+        const error = "Please select a file smaller than 25MB.";
+        setUploadError(error);
         toast({
           title: "File too large",
-          description: "Please select a file smaller than 50MB.",
+          description: error,
           variant: "destructive",
         });
         return;
@@ -252,6 +263,15 @@ const UploadTrack = () => {
         setTrackData((prev) => ({
           ...prev,
           duration: Math.round(audio.duration),
+        }));
+        URL.revokeObjectURL(audio.src); // Clean up
+      });
+      audio.addEventListener("error", () => {
+        console.warn("Could not load audio metadata");
+        // Use default duration if metadata loading fails
+        setTrackData((prev) => ({
+          ...prev,
+          duration: 180, // Default 3 minutes
         }));
       });
       audio.src = URL.createObjectURL(file);
@@ -300,11 +320,49 @@ const UploadTrack = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
+  const checkLocalStorageSpace = () => {
+    try {
+      const testKey = "storage_test";
+      const testData = "a".repeat(1024 * 1024); // 1MB test
+      localStorage.setItem(testKey, testData);
+      localStorage.removeItem(testKey);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
   const handleUpload = async () => {
     if (!trackData.file || !trackData.title.trim()) {
+      const error = "Please add a title and select an audio file.";
+      setUploadError(error);
       toast({
         title: "Missing information",
-        description: "Please add a title and select an audio file.",
+        description: error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user?.id) {
+      const error = "You must be logged in to upload tracks.";
+      setUploadError(error);
+      toast({
+        title: "Authentication required",
+        description: error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if we have enough storage space
+    if (!checkLocalStorageSpace()) {
+      const error =
+        "Not enough storage space. Try clearing browser data or use a smaller file.";
+      setUploadError(error);
+      toast({
+        title: "Storage full",
+        description: error,
         variant: "destructive",
       });
       return;
@@ -312,42 +370,50 @@ const UploadTrack = () => {
 
     setIsUploading(true);
     setUploadProgress(0);
+    setUploadError(null);
 
     try {
       // Simulate upload progress
-      const interval = setInterval(() => {
+      const progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
+          if (prev >= 90) {
+            return prev; // Stop at 90% until actual upload completes
           }
-          return prev + Math.random() * 15;
+          return prev + Math.random() * 10;
         });
       }, 200);
 
-      // Wait for upload to complete
-      await new Promise((resolve) => {
-        setTimeout(() => {
-          setUploadProgress(100);
-          resolve(true);
-        }, 2000);
-      });
+      // Create audio URL for storage
+      let audioUrl = "";
+      try {
+        // For smaller files, store as base64
+        if (trackData.file.size < 10 * 1024 * 1024) {
+          // 10MB
+          audioUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error("Failed to read file"));
+            reader.readAsDataURL(trackData.file!);
+          });
+        } else {
+          // For larger files, create a blob URL (will work until page refresh)
+          audioUrl = URL.createObjectURL(trackData.file);
+        }
+      } catch (fileError) {
+        console.error("File processing error:", fileError);
+        audioUrl = ""; // Continue without audio URL
+      }
 
-      // Create a persistent audio URL for the track
-      // In a real app, this would be the server URL
-      // For demo, we'll store the file data as base64 to persist across browser sessions
-      const audioUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.readAsDataURL(trackData.file);
-      });
+      // Complete the progress
+      clearInterval(progressInterval);
+      setUploadProgress(95);
 
       // Save track data to localStorage
       const track = {
         id: Date.now().toString(),
-        userId: user?.id,
-        title: trackData.title,
-        description: trackData.description,
+        userId: user.id,
+        title: trackData.title.trim(),
+        description: trackData.description.trim(),
         genre: trackData.genre,
         bpm: trackData.bpm,
         musicalKey: trackData.musicalKey,
@@ -362,29 +428,43 @@ const UploadTrack = () => {
         isPublic: trackData.isPublic,
         allowDownload: trackData.allowDownload,
         trackImage: trackData.trackImage,
-        duration: trackData.duration,
+        duration: trackData.duration || 180,
         fileSize: trackData.file.size,
         fileName: trackData.file.name,
-        audioUrl: audioUrl, // Store the persistent audio URL
+        audioUrl: audioUrl,
         uploadDate: new Date().toISOString(),
         plays: 0,
         likes: 0,
-        artist: user?.fullName,
+        artist: user.fullName || "Unknown Artist",
       };
 
       // Store in user's tracks
-      const userTracks = JSON.parse(
-        localStorage.getItem(`tracks_${user?.id}`) || "[]",
-      );
-      userTracks.push(track);
-      localStorage.setItem(`tracks_${user?.id}`, JSON.stringify(userTracks));
+      try {
+        const userTracks = JSON.parse(
+          localStorage.getItem(`tracks_${user.id}`) || "[]",
+        );
+        userTracks.push(track);
+        localStorage.setItem(`tracks_${user.id}`, JSON.stringify(userTracks));
+      } catch (storageError) {
+        console.error("User tracks storage error:", storageError);
+        throw new Error("Failed to save to your track library");
+      }
 
       // If public, add to global tracks
       if (trackData.isPublic) {
-        const allTracks = JSON.parse(localStorage.getItem("allTracks") || "[]");
-        allTracks.push(track);
-        localStorage.setItem("allTracks", JSON.stringify(allTracks));
+        try {
+          const allTracks = JSON.parse(
+            localStorage.getItem("allTracks") || "[]",
+          );
+          allTracks.push(track);
+          localStorage.setItem("allTracks", JSON.stringify(allTracks));
+        } catch (globalStorageError) {
+          console.error("Global tracks storage error:", globalStorageError);
+          // Don't fail the upload if global storage fails
+        }
       }
+
+      setUploadProgress(100);
 
       toast({
         title: "Track uploaded successfully! 🎵",
@@ -411,9 +491,15 @@ const UploadTrack = () => {
         fileInputRef.current.value = "";
       }
     } catch (error) {
+      console.error("Upload error:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Upload failed. Please try again.";
+      setUploadError(errorMessage);
       toast({
         title: "Upload failed",
-        description: "Please try again later.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -458,6 +544,14 @@ const UploadTrack = () => {
             </p>
           </div>
 
+          {/* Error Display */}
+          {uploadError && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center">
+              <AlertTriangle className="w-5 h-5 text-red-500 mr-2" />
+              <span className="text-red-500">{uploadError}</span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* File Upload */}
             <div className="lg:col-span-2 space-y-6">
@@ -482,7 +576,7 @@ const UploadTrack = () => {
                         Drag and drop your audio file or click to browse
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        Supported formats: MP3, WAV, OGG, AAC (max 50MB)
+                        Supported formats: MP3, WAV, OGG, AAC (max 25MB)
                       </p>
                       <input
                         ref={fileInputRef}
