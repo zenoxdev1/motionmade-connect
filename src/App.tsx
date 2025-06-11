@@ -8,6 +8,9 @@ import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import MusicPlayerComponent from "@/components/MusicPlayerComponent";
 
+// Import test helpers for development
+import "@/utils/testHelpers";
+
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
