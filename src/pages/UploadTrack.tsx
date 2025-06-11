@@ -291,8 +291,14 @@ const UploadTrack = () => {
         }, 2000);
       });
 
-      // Create audio URL for the track (in a real app, this would be the server URL)
-      const audioUrl = URL.createObjectURL(trackData.file);
+      // Create a persistent audio URL for the track
+      // In a real app, this would be the server URL
+      // For demo, we'll store the file data as base64 to persist across browser sessions
+      const audioUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(trackData.file);
+      });
 
       // Save track data to localStorage
       const track = {
@@ -317,7 +323,7 @@ const UploadTrack = () => {
         duration: trackData.duration,
         fileSize: trackData.file.size,
         fileName: trackData.file.name,
-        audioUrl: audioUrl, // Store the audio URL
+        audioUrl: audioUrl, // Store the persistent audio URL
         uploadDate: new Date().toISOString(),
         plays: 0,
         likes: 0,
