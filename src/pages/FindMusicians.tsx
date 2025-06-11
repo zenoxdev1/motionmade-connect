@@ -581,7 +581,7 @@ const FindMusicians = () => {
                         </Button>
                         <Button variant="ghost" size="sm" asChild>
                           <Link
-                            to={`/profile/${musician.name.toLowerCase().replace(/\s+/g, "-")}`}
+                            to={`/profile/${musician.username || musician.name.toLowerCase().replace(/\s+/g, "-")}`}
                           >
                             View Profile
                           </Link>

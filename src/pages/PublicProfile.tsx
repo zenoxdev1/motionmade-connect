@@ -80,16 +80,11 @@ const PublicProfile = () => {
       setIsLoading(true);
 
       try {
-        // Find user by username (convert from URL format back to name)
-        const displayName = username
-          ?.replace(/-/g, " ")
-          .replace(/\b\w/g, (l) => l.toUpperCase());
-
-        // Load all users to find the matching profile
+        // Find user by username
         const allUsers = JSON.parse(localStorage.getItem("allUsers") || "[]");
         const userData = allUsers.find(
           (user: any) =>
-            user.fullName?.toLowerCase() === displayName?.toLowerCase(),
+            user.username?.toLowerCase() === username?.toLowerCase(),
         );
 
         if (!userData) {
