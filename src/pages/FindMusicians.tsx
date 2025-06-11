@@ -37,8 +37,7 @@ import { useState, useEffect } from "react";
 
 interface Musician {
   id: string;
-  fullName: string;
-  email: string;
+  name: string;
   avatar?: string;
   instrument: string;
   genre: string;
@@ -48,180 +47,35 @@ interface Musician {
   lookingFor: string;
   rating: number;
   connectionsCount: number;
-  tracksCount: number;
   isOnline: boolean;
   lastActive: string;
-  socialLinks: {
+  socialLinks?: {
     instagram?: string;
     youtube?: string;
+    website?: string;
   };
 }
 
 const FindMusicians = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedInstrument, setSelectedInstrument] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("");
   const [selectedLookingFor, setSelectedLookingFor] = useState("");
   const [musicians, setMusicians] = useState<Musician[]>([]);
-  const [filteredMusicians, setFilteredMusicians] = useState<Musician[]>([]);
-
-  // Mock musicians data
-  const mockMusicians: Musician[] = [
-    {
-      id: "1",
-      fullName: "Sarah Chen",
-      email: "sarah@example.com",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=60&h=60&fit=crop&crop=face",
-      instrument: "vocals",
-      genre: "jazz",
-      location: "Los Angeles, CA",
-      bio: "Jazz vocalist with 15+ years experience. Love collaborating on soulful projects.",
-      experienceLevel: "professional",
-      lookingFor: "collaborators",
-      rating: 4.9,
-      connectionsCount: 127,
-      tracksCount: 23,
-      isOnline: true,
-      lastActive: "2 minutes ago",
-      socialLinks: {
-        instagram: "@sarahchen_vocals",
-        youtube: "@SarahChenMusic",
-      },
-    },
-    {
-      id: "2",
-      fullName: "Marcus Williams",
-      email: "marcus@example.com",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=face",
-      instrument: "guitar",
-      genre: "rock",
-      location: "Nashville, TN",
-      bio: "Session guitarist looking for rock/blues collaborations and live gigs.",
-      experienceLevel: "advanced",
-      lookingFor: "band",
-      rating: 4.8,
-      connectionsCount: 89,
-      tracksCount: 45,
-      isOnline: false,
-      lastActive: "1 hour ago",
-      socialLinks: {
-        instagram: "@marcusguitarist",
-      },
-    },
-    {
-      id: "3",
-      fullName: "Emma Rodriguez",
-      email: "emma@example.com",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=60&h=60&fit=crop&crop=face",
-      instrument: "piano",
-      genre: "classical",
-      location: "New York, NY",
-      bio: "Classical pianist open to crossover projects. Studied at Juilliard.",
-      experienceLevel: "professional",
-      lookingFor: "collaborators",
-      rating: 4.9,
-      connectionsCount: 156,
-      tracksCount: 31,
-      isOnline: true,
-      lastActive: "5 minutes ago",
-      socialLinks: {
-        youtube: "@EmmaRodriguezPiano",
-      },
-    },
-    {
-      id: "4",
-      fullName: "David Kim",
-      email: "david@example.com",
-      instrument: "drums",
-      genre: "electronic",
-      location: "Seattle, WA",
-      bio: "Electronic music producer and drummer. Love mixing organic drums with synths.",
-      experienceLevel: "intermediate",
-      lookingFor: "jam",
-      rating: 4.6,
-      connectionsCount: 67,
-      tracksCount: 18,
-      isOnline: false,
-      lastActive: "3 hours ago",
-      socialLinks: {},
-    },
-    {
-      id: "5",
-      fullName: "Lisa Park",
-      email: "lisa@example.com",
-      instrument: "guitar",
-      genre: "indie",
-      location: "Austin, TX",
-      bio: "Indie singer-songwriter. Looking for a bassist and drummer to complete my band.",
-      experienceLevel: "intermediate",
-      lookingFor: "band",
-      rating: 4.7,
-      connectionsCount: 43,
-      tracksCount: 12,
-      isOnline: true,
-      lastActive: "Just now",
-      socialLinks: {
-        instagram: "@lisaparkmusic",
-      },
-    },
-  ];
-
-  useEffect(() => {
-    setMusicians(mockMusicians);
-    setFilteredMusicians(mockMusicians);
-  }, []);
-
-  useEffect(() => {
-    let filtered = musicians.filter((musician) => {
-      const matchesSearch =
-        musician.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        musician.bio.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        musician.instrument.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        musician.genre.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesInstrument =
-        !selectedInstrument || musician.instrument === selectedInstrument;
-      const matchesGenre = !selectedGenre || musician.genre === selectedGenre;
-      const matchesLocation =
-        !selectedLocation ||
-        musician.location
-          .toLowerCase()
-          .includes(selectedLocation.toLowerCase());
-      const matchesLookingFor =
-        !selectedLookingFor || musician.lookingFor === selectedLookingFor;
-
-      return (
-        matchesSearch &&
-        matchesInstrument &&
-        matchesGenre &&
-        matchesLocation &&
-        matchesLookingFor
-      );
-    });
-
-    setFilteredMusicians(filtered);
-  }, [
-    searchQuery,
-    selectedInstrument,
-    selectedGenre,
-    selectedLocation,
-    selectedLookingFor,
-    musicians,
-  ]);
 
   const instruments = [
     { value: "guitar", label: "Guitar", icon: Guitar },
-    { value: "piano", label: "Piano/Keyboard", icon: Piano },
+    { value: "piano", label: "Piano", icon: Piano },
     { value: "drums", label: "Drums", icon: Drum },
     { value: "vocals", label: "Vocals", icon: Mic },
     { value: "bass", label: "Bass Guitar", icon: Guitar },
     { value: "violin", label: "Violin", icon: Music },
     { value: "saxophone", label: "Saxophone", icon: Music },
+    { value: "trumpet", label: "Trumpet", icon: Music },
   ];
 
   const genres = [
@@ -235,15 +89,140 @@ const FindMusicians = () => {
     "R&B",
     "Blues",
     "Folk",
-    "Indie",
+    "Reggae",
+    "Metal",
   ];
+
+  const locations = [
+    "New York, NY",
+    "Los Angeles, CA",
+    "Chicago, IL",
+    "Nashville, TN",
+    "Austin, TX",
+    "Seattle, WA",
+    "Miami, FL",
+    "Boston, MA",
+  ];
+
   const lookingForOptions = [
-    { value: "band", label: "Join a Band" },
-    { value: "collaborators", label: "Find Collaborators" },
-    { value: "jam", label: "Jam Sessions" },
-    { value: "mentor", label: "Find a Mentor" },
-    { value: "students", label: "Teach Students" },
+    { value: "band_members", label: "Band Members" },
+    { value: "collaborators", label: "Collaborators" },
+    { value: "session_musicians", label: "Session Musicians" },
+    { value: "jam_partners", label: "Jam Partners" },
+    { value: "producers", label: "Producers" },
+    { value: "songwriters", label: "Songwriters" },
   ];
+
+  useEffect(() => {
+    // Generate sample musicians data
+    const sampleMusicians: Musician[] = [
+      {
+        id: "1",
+        name: "Alex Johnson",
+        avatar: "https://i.pravatar.cc/150?img=1",
+        instrument: "guitar",
+        genre: "Rock",
+        location: "New York, NY",
+        bio: "Passionate rock guitarist with 8+ years of experience. Looking for band members to start a new project.",
+        experienceLevel: "Advanced",
+        lookingFor: "band_members",
+        rating: 4.8,
+        connectionsCount: 45,
+        isOnline: true,
+        lastActive: "2 min ago",
+        socialLinks: {
+          instagram: "https://instagram.com/alexguitar",
+          youtube: "https://youtube.com/alexguitar",
+        },
+      },
+      {
+        id: "2",
+        name: "Sarah Chen",
+        avatar: "https://i.pravatar.cc/150?img=2",
+        instrument: "piano",
+        genre: "Jazz",
+        location: "Los Angeles, CA",
+        bio: "Jazz pianist and composer. Love creating soulful melodies and looking for creative collaborators.",
+        experienceLevel: "Professional",
+        lookingFor: "collaborators",
+        rating: 4.9,
+        connectionsCount: 62,
+        isOnline: false,
+        lastActive: "1 hour ago",
+        socialLinks: {
+          website: "https://sarahchen.music",
+        },
+      },
+      {
+        id: "3",
+        name: "Mike Rodriguez",
+        avatar: "https://i.pravatar.cc/150?img=3",
+        instrument: "drums",
+        genre: "Hip Hop",
+        location: "Chicago, IL",
+        bio: "Hip-hop drummer with a pocket that never quits. Session work and live performances welcome.",
+        experienceLevel: "Advanced",
+        lookingFor: "session_musicians",
+        rating: 4.7,
+        connectionsCount: 38,
+        isOnline: true,
+        lastActive: "5 min ago",
+      },
+      {
+        id: "4",
+        name: "Emma Wilson",
+        avatar: "https://i.pravatar.cc/150?img=4",
+        instrument: "vocals",
+        genre: "Pop",
+        location: "Nashville, TN",
+        bio: "Pop vocalist and songwriter. Looking to collaborate on original music and covers.",
+        experienceLevel: "Intermediate",
+        lookingFor: "songwriters",
+        rating: 4.6,
+        connectionsCount: 29,
+        isOnline: false,
+        lastActive: "3 hours ago",
+      },
+      {
+        id: "5",
+        name: "David Kim",
+        avatar: "https://i.pravatar.cc/150?img=5",
+        instrument: "bass",
+        genre: "Electronic",
+        location: "Austin, TX",
+        bio: "Electronic music producer and bass player. Always experimenting with new sounds.",
+        experienceLevel: "Professional",
+        lookingFor: "producers",
+        rating: 4.8,
+        connectionsCount: 54,
+        isOnline: true,
+        lastActive: "1 min ago",
+      },
+    ];
+
+    setMusicians(sampleMusicians);
+  }, []);
+
+  const filteredMusicians = musicians.filter((musician) => {
+    const matchesSearch =
+      musician.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      musician.bio.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesInstrument =
+      !selectedInstrument || musician.instrument === selectedInstrument;
+    const matchesGenre = !selectedGenre || musician.genre === selectedGenre;
+    const matchesLocation =
+      !selectedLocation || musician.location === selectedLocation;
+    const matchesLookingFor =
+      !selectedLookingFor || musician.lookingFor === selectedLookingFor;
+
+    return (
+      matchesSearch &&
+      matchesInstrument &&
+      matchesGenre &&
+      matchesLocation &&
+      matchesLookingFor
+    );
+  });
 
   const getInstrumentIcon = (instrument: string) => {
     const found = instruments.find((i) => i.value === instrument);
@@ -251,13 +230,17 @@ const FindMusicians = () => {
   };
 
   const handleConnect = (musicianId: string) => {
-    // Add connection logic here
-    console.log("Connecting to musician:", musicianId);
+    toast({
+      title: "Connection request sent!",
+      description: "You'll be notified when they respond.",
+    });
   };
 
   const handleMessage = (musicianId: string) => {
-    // Add messaging logic here
-    console.log("Messaging musician:", musicianId);
+    toast({
+      title: "Message feature coming soon!",
+      description: "Direct messaging will be available in the next update.",
+    });
   };
 
   return (
@@ -285,38 +268,40 @@ const FindMusicians = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Find Musicians</h1>
-          <p className="text-muted-foreground">
-            Discover and connect with musicians who share your passion
-          </p>
-        </div>
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Find Musicians</h1>
+            <p className="text-muted-foreground">
+              Connect with talented musicians and expand your network
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Filters Sidebar */}
-          <div className="space-y-6">
-            <Card className="border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Filter className="w-5 h-5 mr-2" />
-                  Filters
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="search">Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="search"
-                      placeholder="Search musicians..."
-                      className="pl-10"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
+          {/* Search and Filters */}
+          <Card className="mb-8 border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Search className="w-5 h-5 mr-2" />
+                Search & Filters
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Search Bar */}
+              <div className="space-y-2">
+                <Label htmlFor="search">Search Musicians</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="search"
+                    placeholder="Search by name, bio, or skills..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
+              </div>
 
+              {/* Filters */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <Label>Instrument</Label>
                   <Select
@@ -333,10 +318,7 @@ const FindMusicians = () => {
                           key={instrument.value}
                           value={instrument.value}
                         >
-                          <div className="flex items-center">
-                            <instrument.icon className="w-4 h-4 mr-2" />
-                            {instrument.label}
-                          </div>
+                          {instrument.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -355,7 +337,7 @@ const FindMusicians = () => {
                     <SelectContent>
                       <SelectItem value="">Any genre</SelectItem>
                       {genres.map((genre) => (
-                        <SelectItem key={genre} value={genre.toLowerCase()}>
+                        <SelectItem key={genre} value={genre}>
                           {genre}
                         </SelectItem>
                       ))}
@@ -365,11 +347,22 @@ const FindMusicians = () => {
 
                 <div className="space-y-2">
                   <Label>Location</Label>
-                  <Input
-                    placeholder="City, State"
+                  <Select
                     value={selectedLocation}
-                    onChange={(e) => setSelectedLocation(e.target.value)}
-                  />
+                    onValueChange={setSelectedLocation}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Any location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Any location</SelectItem>
+                      {locations.map((location) => (
+                        <SelectItem key={location} value={location}>
+                          {location}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -379,10 +372,10 @@ const FindMusicians = () => {
                     onValueChange={setSelectedLookingFor}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Anything" />
+                      <SelectValue placeholder="Any type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Anything</SelectItem>
+                      <SelectItem value="">Any type</SelectItem>
                       {lookingForOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -391,34 +384,77 @@ const FindMusicians = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
 
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedInstrument("");
-                    setSelectedGenre("");
-                    setSelectedLocation("");
-                    setSelectedLookingFor("");
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              {/* Active Filters */}
+              {(searchQuery ||
+                selectedInstrument ||
+                selectedGenre ||
+                selectedLocation ||
+                selectedLookingFor) && (
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    Active filters:
+                  </span>
+                  {searchQuery && (
+                    <Badge variant="secondary">Search: "{searchQuery}"</Badge>
+                  )}
+                  {selectedInstrument && (
+                    <Badge variant="secondary">
+                      {
+                        instruments.find((i) => i.value === selectedInstrument)
+                          ?.label
+                      }
+                    </Badge>
+                  )}
+                  {selectedGenre && (
+                    <Badge variant="secondary">{selectedGenre}</Badge>
+                  )}
+                  {selectedLocation && (
+                    <Badge variant="secondary">{selectedLocation}</Badge>
+                  )}
+                  {selectedLookingFor && (
+                    <Badge variant="secondary">
+                      {
+                        lookingForOptions.find(
+                          (o) => o.value === selectedLookingFor,
+                        )?.label
+                      }
+                    </Badge>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSelectedInstrument("");
+                      setSelectedGenre("");
+                      setSelectedLocation("");
+                      setSelectedLookingFor("");
+                    }}
+                  >
+                    Clear all
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Musicians List */}
-          <div className="lg:col-span-3">
-            <div className="mb-6 flex items-center justify-between">
-              <p className="text-muted-foreground">
-                Found {filteredMusicians.length} musician
-                {filteredMusicians.length !== 1 ? "s" : ""}
-              </p>
+          {/* Results */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">
+                Musicians ({filteredMusicians.length})
+              </h2>
+              <div className="flex items-center space-x-2">
+                <Filter className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {filteredMusicians.length} results
+                </span>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid gap-6">
               {filteredMusicians.map((musician) => {
                 const InstrumentIcon = getInstrumentIcon(musician.instrument);
                 return (
@@ -429,36 +465,55 @@ const FindMusicians = () => {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-4">
-                      <div className="flex justify-between items-center mt-4">
-                        <div className="flex space-x-2">
-                          <Button size="sm">
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Connect
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <MessageCircle className="w-4 h-4 mr-2" />
-                            Message
-                          </Button>
+                          <Avatar className="w-16 h-16 border-2 border-purple-500/20">
+                            <AvatarImage src={musician.avatar} />
+                            <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white">
+                              {musician.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="text-xl font-semibold">
+                              {musician.name}
+                            </h3>
+                            <div className="flex items-center space-x-2 text-muted-foreground">
+                              <InstrumentIcon className="w-4 h-4" />
+                              <span>{musician.instrument}</span>
+                              <span>•</span>
+                              <span>{musician.genre}</span>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <MapPin className="w-4 h-4 text-muted-foreground" />
+                              <span className="text-sm text-muted-foreground">
+                                {musician.location}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <Star className="w-4 h-4 text-yellow-400" />
+                              <span className="text-sm">{musician.rating}</span>
+                              <span className="text-sm text-muted-foreground">
+                                ({musician.connectionsCount} connections)
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleConnect(musician.id)}
-                        >
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          Connect
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMessage(musician.id)}
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/profile/${musician.name.toLowerCase().replace(/\s+/g, "-")}`}>
-                            View Profile
-                          </Link>
-                        </Button>
+                        <div className="flex flex-col items-end space-y-1">
+                          <Badge
+                            variant={
+                              musician.isOnline ? "default" : "secondary"
+                            }
+                            className="text-xs"
+                          >
+                            {musician.isOnline ? "Online" : musician.lastActive}
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className="text-xs capitalize"
+                          >
+                            {musician.lookingFor.replace("_", " ")}
+                          </Badge>
                         </div>
                       </div>
                     </CardHeader>
@@ -468,44 +523,48 @@ const FindMusicians = () => {
                         {musician.bio}
                       </p>
 
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <MapPin className="w-4 h-4" />
-                          <span>{musician.location}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Music className="w-4 h-4" />
-                          <span>{musician.tracksCount} tracks</span>
-                        </div>
-                      </div>
-
-                      {(musician.socialLinks.instagram ||
-                        musician.socialLinks.youtube) && (
-                        <div className="flex items-center space-x-2">
+                      {/* Social Links */}
+                      {musician.socialLinks && (
+                        <div className="flex space-x-2">
                           {musician.socialLinks.instagram && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                            >
-                              <Instagram className="w-4 h-4 text-pink-500" />
+                            <Button variant="outline" size="sm" asChild>
+                              <a
+                                href={musician.socialLinks.instagram}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Instagram className="w-4 h-4" />
+                              </a>
                             </Button>
                           )}
                           {musician.socialLinks.youtube && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                            >
-                              <Youtube className="w-4 h-4 text-red-500" />
+                            <Button variant="outline" size="sm" asChild>
+                              <a
+                                href={musician.socialLinks.youtube}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Youtube className="w-4 h-4" />
+                              </a>
+                            </Button>
+                          )}
+                          {musician.socialLinks.website && (
+                            <Button variant="outline" size="sm" asChild>
+                              <a
+                                href={musician.socialLinks.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Globe className="w-4 h-4" />
+                              </a>
                             </Button>
                           )}
                         </div>
                       )}
 
-                      <div className="flex space-x-2">
+                      {/* Action Buttons */}
+                      <div className="flex items-center space-x-2">
                         <Button
-                          className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
                           size="sm"
                           onClick={() => handleConnect(musician.id)}
                         >
@@ -517,7 +576,15 @@ const FindMusicians = () => {
                           size="sm"
                           onClick={() => handleMessage(musician.id)}
                         >
-                          <MessageCircle className="w-4 h-4" />
+                          <MessageCircle className="w-4 h-4 mr-2" />
+                          Message
+                        </Button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link
+                            to={`/profile/${musician.name.toLowerCase().replace(/\s+/g, "-")}`}
+                          >
+                            View Profile
+                          </Link>
                         </Button>
                       </div>
                     </CardContent>
