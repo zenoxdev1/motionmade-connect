@@ -9,6 +9,7 @@ interface Track {
   fileName?: string;
   allowDownload?: boolean;
   likes?: number;
+  audioUrl?: string;
 }
 
 interface MusicPlayerContextType {
