@@ -177,39 +177,53 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     try {
       if (isPlaying) {
         audio.pause();
+        // Clear any simulation intervals
+        if ((audio as any).simulationInterval) {
+          clearInterval((audio as any).simulationInterval);
+          (audio as any).simulationInterval = null;
+        }
       } else {
-        await audio.play();
-      }
-    } catch (error) {
-      // If real audio fails, simulate playback for demo
-      console.log("Audio playback failed, simulating:", error);
-      setIsPlaying(!isPlaying);
+        if (currentTrack.audioUrl && audio.src) {
+          // Try to play real audio
+          await audio.play();
+        } else {
+          // Simulate playback for demo
+          console.log(
+            "No audio URL, simulating playback for:",
+            currentTrack.title,
+          );
+          setIsPlaying(true);
 
-      if (!isPlaying) {
-        // Simulate track progress for demo
-        const simulateProgress = () => {
-          setCurrentTime((prev) => {
-            const newTime = prev + 1;
-            if (newTime >= duration) {
-              setIsPlaying(false);
-              return 0;
-            }
-            return newTime;
-          });
-        };
+          // Simulate track progress
+          const simulateProgress = () => {
+            setCurrentTime((prev) => {
+              const newTime = prev + 1;
+              if (newTime >= duration) {
+                setIsPlaying(false);
+                if ((audio as any).simulationInterval) {
+                  clearInterval((audio as any).simulationInterval);
+                  (audio as any).simulationInterval = null;
+                }
+                return 0;
+              }
+              return newTime;
+            });
+          };
 
-        const interval = setInterval(simulateProgress, 1000);
-
-        // Store interval reference to clean up later
-        if (audio) {
+          const interval = setInterval(simulateProgress, 1000);
           (audio as any).simulationInterval = interval;
         }
-      } else {
-        // Clear simulation interval
-        if (audio && (audio as any).simulationInterval) {
-          clearInterval((audio as any).simulationInterval);
-        }
       }
+    } catch (error) {
+      console.error("Audio playback error:", error);
+      toast({
+        title: "Playback Error",
+        description: "Unable to play this track. This might be a demo track.",
+        variant: "destructive",
+      });
+
+      // Fallback to simulation
+      setIsPlaying(!isPlaying);
     }
   };
 
