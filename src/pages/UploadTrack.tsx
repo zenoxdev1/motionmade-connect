@@ -205,6 +205,12 @@ const UploadTrack = () => {
         return;
       }
 
+      // Stop current audio if playing different file
+      if (globalAudioElement && globalAudioFile && globalAudioFile !== file) {
+        globalAudioElement.pause();
+        setIsPlaying(false);
+      }
+
       setTrackData((prev) => ({
         ...prev,
         file,
