@@ -439,35 +439,25 @@ const FindMusicians = () => {
                             Message
                           </Button>
                         </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleConnect(musician.id)}
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Connect
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleMessage(musician.id)}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
                         <Button variant="ghost" size="sm" asChild>
                           <Link to={`/profile/${musician.name.toLowerCase().replace(/\s+/g, "-")}`}>
                             View Profile
                           </Link>
                         </Button>
-                      </div>
-                              <Star className="w-4 h-4 text-yellow-400" />
-                              <span className="text-sm">{musician.rating}</span>
-                              <span className="text-sm text-muted-foreground">
-                                ({musician.connectionsCount} connections)
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-end space-y-1">
-                          <Badge
-                            variant={
-                              musician.isOnline ? "default" : "secondary"
-                            }
-                            className="text-xs"
-                          >
-                            {musician.isOnline ? "Online" : musician.lastActive}
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="text-xs capitalize"
-                          >
-                            {musician.lookingFor.replace("_", " ")}
-                          </Badge>
                         </div>
                       </div>
                     </CardHeader>
