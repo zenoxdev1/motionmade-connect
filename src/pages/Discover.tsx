@@ -374,7 +374,7 @@ const Discover = () => {
     );
   }
 
-  const currentTrack = cardState.user.tracks?.[cardState.currentTrackIndex];
+  const currentUserTrack = cardState.user.tracks?.[cardState.currentTrackIndex];
   const InstrumentIcon = getInstrumentIcon(cardState.user.instrument);
 
   return (
@@ -423,10 +423,10 @@ const Discover = () => {
               <CardContent className="p-0">
                 {/* Track Cover Image */}
                 <div className="relative h-80 bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-t-lg overflow-hidden">
-                  {currentTrack?.trackImage ? (
+                  {currentUserTrack?.trackImage ? (
                     <img
-                      src={currentTrack.trackImage}
-                      alt={currentTrack.title}
+                      src={currentUserTrack.trackImage}
+                      alt={currentUserTrack.title}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -443,7 +443,7 @@ const Discover = () => {
                       className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 border-2 border-white/50"
                     >
                       {cardState.isPlaying &&
-                      currentTrack?.id === currentTrack?.id ? (
+                      currentTrack?.id === currentUserTrack?.id ? (
                         <Pause className="w-8 h-8 text-white" />
                       ) : (
                         <Play className="w-8 h-8 text-white ml-1" />
@@ -500,29 +500,29 @@ const Discover = () => {
                   </div>
 
                   {/* Current Track Info */}
-                  {currentTrack && (
+                  {currentUserTrack && (
                     <div className="mb-4 p-4 bg-muted/50 rounded-lg">
                       <h3 className="font-semibold text-lg mb-1">
-                        {currentTrack.title}
+                        {currentUserTrack.title}
                       </h3>
                       <div className="flex items-center justify-between text-sm text-muted-foreground">
                         <div className="flex items-center space-x-4">
                           <div className="flex items-center space-x-1">
                             <Clock className="w-3 h-3" />
                             <span>
-                              {Math.floor(currentTrack.duration / 60)}:
-                              {(currentTrack.duration % 60)
+                              {Math.floor(currentUserTrack.duration / 60)}:
+                              {(currentUserTrack.duration % 60)
                                 .toString()
                                 .padStart(2, "0")}
                             </span>
                           </div>
                           <div className="flex items-center space-x-1">
                             <Eye className="w-3 h-3" />
-                            <span>{currentTrack.plays || 0}</span>
+                            <span>{currentUserTrack.plays || 0}</span>
                           </div>
                           <div className="flex items-center space-x-1">
                             <Heart className="w-3 h-3" />
-                            <span>{currentTrack.likes || 0}</span>
+                            <span>{currentUserTrack.likes || 0}</span>
                           </div>
                         </div>
                       </div>
