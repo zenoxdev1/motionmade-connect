@@ -428,39 +428,23 @@ const FindMusicians = () => {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-4">
-                          <div className="relative">
-                            <Avatar className="w-16 h-16">
-                              <AvatarImage
-                                src={musician.avatar}
-                                alt={musician.fullName}
-                              />
-                              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white">
-                                {musician.fullName
-                                  .split(" ")
-                                  .map((n) => n[0])
-                                  .join("")
-                                  .toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
-                            {musician.isOnline && (
-                              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-background"></div>
-                            )}
-                          </div>
-                          <div>
-                            <h3 className="text-lg font-semibold">
-                              {musician.fullName}
-                            </h3>
-                            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                              <InstrumentIcon className="w-4 h-4" />
-                              <span className="capitalize">
-                                {musician.instrument}
-                              </span>
-                              <span>•</span>
-                              <span className="capitalize">
-                                {musician.genre}
-                              </span>
-                            </div>
-                            <div className="flex items-center space-x-1 mt-1">
+                      <div className="flex justify-between items-center mt-4">
+                        <div className="flex space-x-2">
+                          <Button size="sm">
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Connect
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            <MessageCircle className="w-4 h-4 mr-2" />
+                            Message
+                          </Button>
+                        </div>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/profile/${musician.name.toLowerCase().replace(/\s+/g, "-")}`}>
+                            View Profile
+                          </Link>
+                        </Button>
+                      </div>
                               <Star className="w-4 h-4 text-yellow-400" />
                               <span className="text-sm">{musician.rating}</span>
                               <span className="text-sm text-muted-foreground">
