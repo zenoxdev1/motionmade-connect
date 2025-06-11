@@ -240,10 +240,20 @@ const UploadTrack = () => {
       if (isPlaying) {
         globalAudioElement.pause();
       } else {
-        // Only set new source if it's different
+        // Only set new source if it's different file
         if (globalAudioFile !== trackData.file) {
-          globalAudioElement.src = URL.createObjectURL(trackData.file);
+          const audioUrl = URL.createObjectURL(trackData.file);
+          globalAudioElement.src = audioUrl;
           globalAudioFile = trackData.file;
+
+          // Clean up previous URL
+          if (
+            globalAudioElement.src &&
+            globalAudioElement.src.startsWith("blob:")
+          ) {
+            const oldUrl = globalAudioElement.src;
+            setTimeout(() => URL.revokeObjectURL(oldUrl), 1000);
+          }
         }
         globalAudioElement.play();
       }
