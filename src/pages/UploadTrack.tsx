@@ -237,12 +237,19 @@ const UploadTrack = () => {
         title: trackData.title,
         description: trackData.description,
         genre: trackData.genre,
+        bpm: trackData.bpm,
+        musicalKey: trackData.musicalKey,
         tags: trackData.tags
           .split(",")
           .map((tag) => tag.trim())
           .filter(Boolean),
+        collaborators: trackData.collaborators
+          .split(",")
+          .map((collab) => collab.trim())
+          .filter(Boolean),
         isPublic: trackData.isPublic,
         allowDownload: trackData.allowDownload,
+        trackImage: trackData.trackImage,
         duration: trackData.duration,
         fileSize: trackData.file.size,
         fileName: trackData.file.name,
@@ -276,9 +283,13 @@ const UploadTrack = () => {
         title: "",
         description: "",
         genre: "",
+        bpm: 120,
+        musicalKey: "C",
         tags: "",
+        collaborators: "",
         isPublic: true,
         allowDownload: false,
+        trackImage: "",
         file: null,
         duration: 0,
       });
@@ -489,6 +500,47 @@ const UploadTrack = () => {
                     </div>
 
                     <div className="space-y-2">
+                      <Label htmlFor="bpm">BPM (Beats Per Minute)</Label>
+                      <Input
+                        id="bpm"
+                        type="number"
+                        min="60"
+                        max="200"
+                        value={trackData.bpm}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "bpm",
+                            parseInt(e.target.value) || 120,
+                          )
+                        }
+                        placeholder="120"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="musicalKey">Musical Key</Label>
+                      <Select
+                        value={trackData.musicalKey}
+                        onValueChange={(value) =>
+                          handleInputChange("musicalKey", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select key" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {musicalKeys.map((key) => (
+                            <SelectItem key={key} value={key}>
+                              {key}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label htmlFor="tags">Tags</Label>
                       <Input
                         id="tags"
@@ -499,6 +551,18 @@ const UploadTrack = () => {
                         placeholder="indie, acoustic, chill (comma separated)"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="collaborators">Collaborators</Label>
+                    <Input
+                      id="collaborators"
+                      value={trackData.collaborators}
+                      onChange={(e) =>
+                        handleInputChange("collaborators", e.target.value)
+                      }
+                      placeholder="Collaborator names (comma separated)"
+                    />
                   </div>
                 </CardContent>
               </Card>

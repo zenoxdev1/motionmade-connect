@@ -213,9 +213,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   return (
     <>
       {/* Audio element for actual playback */}
-      <audio ref={audioRef} preload="metadata">
-        {/* In a real app, you'd set the src to the actual audio file URL */}
-      </audio>
+      <audio ref={audioRef} preload="metadata" />
 
       {/* Player UI */}
       <Card className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 bg-gradient-to-r from-card via-card to-purple-950/10 backdrop-blur-md rounded-none">
