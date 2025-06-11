@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import MusicPlayerComponent from "@/components/MusicPlayerComponent";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Import test helpers for development
 import "@/utils/testHelpers";
@@ -34,92 +35,94 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <MusicPlayerProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/features" element={<Features />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/profile/:username" element={<PublicProfile />} />
-              <Route
-                path="/login"
-                element={
-                  <ProtectedRoute requireAuth={false}>
-                    <Login />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/signup"
-                element={
-                  <ProtectedRoute requireAuth={false}>
-                    <Signup />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute requireAuth={true}>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute requireAuth={true}>
-                    <Profile />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/upload-track"
-                element={
-                  <ProtectedRoute requireAuth={true}>
-                    <UploadTrack />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/find-musicians"
-                element={
-                  <ProtectedRoute requireAuth={true}>
-                    <FindMusicians />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/my-tracks"
-                element={
-                  <ProtectedRoute requireAuth={true}>
-                    <MyTracks />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/edit-track/:trackId"
-                element={
-                  <ProtectedRoute requireAuth={true}>
-                    <EditTrack />
-                  </ProtectedRoute>
-                }
-              />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-          <MusicPlayerComponent />
-        </TooltipProvider>
-      </MusicPlayerProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <MusicPlayerProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/features" element={<Features />} />
+                <Route path="/community" element={<Community />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/terms" element={<Terms />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/profile/:username" element={<PublicProfile />} />
+                <Route
+                  path="/login"
+                  element={
+                    <ProtectedRoute requireAuth={false}>
+                      <Login />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/signup"
+                  element={
+                    <ProtectedRoute requireAuth={false}>
+                      <Signup />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/profile"
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <Profile />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/upload-track"
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <UploadTrack />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/find-musicians"
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <FindMusicians />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/my-tracks"
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <MyTracks />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/edit-track/:trackId"
+                  element={
+                    <ProtectedRoute requireAuth={true}>
+                      <EditTrack />
+                    </ProtectedRoute>
+                  }
+                />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+            <MusicPlayerComponent />
+          </TooltipProvider>
+        </MusicPlayerProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </QueryClientProvider>
 );
 
