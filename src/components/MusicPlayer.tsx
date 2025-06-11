@@ -78,13 +78,20 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     setCurrentTime(0);
     setIsPlaying(false);
 
-    // For demo purposes, we'll use a sample audio URL
-    // In a real app, you'd get the actual audio file URL from your server
-    const audioUrl =
-      currentTrack.audioUrl ||
-      `https://www.soundjay.com/misc/sounds/bell-ringing-05.wav`;
-    audio.src = audioUrl;
-    audio.load();
+    // Use the track's audio URL if available
+    if (currentTrack.audioUrl) {
+      audio.src = currentTrack.audioUrl;
+      audio.load();
+    } else {
+      // For demo purposes, create a simple audio context tone
+      setIsLoading(false);
+      setDuration(currentTrack.duration);
+      console.log(
+        "No audio URL found, using demo mode for:",
+        currentTrack.title,
+      );
+      return;
+    }
 
     const handleLoadedData = () => {
       setDuration(audio.duration || currentTrack.duration);
