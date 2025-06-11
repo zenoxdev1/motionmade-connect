@@ -120,6 +120,7 @@ const FindMusicians = () => {
       {
         id: "1",
         name: "Alex Johnson",
+        username: "alexguitar",
         avatar: "https://i.pravatar.cc/150?img=1",
         instrument: "guitar",
         genre: "Rock",
@@ -139,6 +140,7 @@ const FindMusicians = () => {
       {
         id: "2",
         name: "Sarah Chen",
+        username: "sarahpiano",
         avatar: "https://i.pravatar.cc/150?img=2",
         instrument: "piano",
         genre: "Jazz",
@@ -157,6 +159,7 @@ const FindMusicians = () => {
       {
         id: "3",
         name: "Mike Rodriguez",
+        username: "mikedrums",
         avatar: "https://i.pravatar.cc/150?img=3",
         instrument: "drums",
         genre: "Hip Hop",
@@ -172,6 +175,7 @@ const FindMusicians = () => {
       {
         id: "4",
         name: "Emma Wilson",
+        username: "emmavocals",
         avatar: "https://i.pravatar.cc/150?img=4",
         instrument: "vocals",
         genre: "Pop",
@@ -187,6 +191,7 @@ const FindMusicians = () => {
       {
         id: "5",
         name: "David Kim",
+        username: "davidbass",
         avatar: "https://i.pravatar.cc/150?img=5",
         instrument: "bass",
         genre: "Electronic",
@@ -206,8 +211,8 @@ const FindMusicians = () => {
 
   const filteredMusicians = musicians.filter((musician) => {
     const matchesSearch =
-      musician.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      musician.bio.toLowerCase().includes(searchQuery.toLowerCase());
+      musician.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      musician.bio?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesInstrument =
       !selectedInstrument || musician.instrument === selectedInstrument;
     const matchesGenre = !selectedGenre || musician.genre === selectedGenre;
@@ -242,6 +247,14 @@ const FindMusicians = () => {
       title: "Message feature coming soon!",
       description: "Direct messaging will be available in the next update.",
     });
+  };
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setSelectedInstrument("");
+    setSelectedGenre("");
+    setSelectedLocation("");
+    setSelectedLookingFor("");
   };
 
   return (
@@ -338,7 +351,7 @@ const FindMusicians = () => {
                     <SelectContent>
                       <SelectItem value="">Any genre</SelectItem>
                       {genres.map((genre) => (
-                        <SelectItem key={genre} value={genre}>
+                        <SelectItem key={genre} value={genre.toLowerCase()}>
                           {genre}
                         </SelectItem>
                       ))}
@@ -423,17 +436,7 @@ const FindMusicians = () => {
                       }
                     </Badge>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setSelectedInstrument("");
-                      setSelectedGenre("");
-                      setSelectedLocation("");
-                      setSelectedLookingFor("");
-                    }}
-                  >
+                  <Button variant="ghost" size="sm" onClick={clearAllFilters}>
                     Clear all
                   </Button>
                 </div>
@@ -467,7 +470,10 @@ const FindMusicians = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex items-center space-x-4">
                           <Avatar className="w-16 h-16 border-2 border-purple-500/20">
-                            <AvatarImage src={musician.avatar} />
+                            <AvatarImage
+                              src={musician.avatar}
+                              alt={musician.name}
+                            />
                             <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white">
                               {musician.name
                                 .split(" ")
@@ -603,16 +609,7 @@ const FindMusicians = () => {
                 <p className="text-muted-foreground mb-4">
                   Try adjusting your search criteria or filters
                 </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedInstrument("");
-                    setSelectedGenre("");
-                    setSelectedLocation("");
-                    setSelectedLookingFor("");
-                  }}
-                >
+                <Button variant="outline" onClick={clearAllFilters}>
                   Clear All Filters
                 </Button>
               </Card>
