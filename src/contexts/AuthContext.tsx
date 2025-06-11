@@ -146,6 +146,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           id: "demo_user",
           email: "demo@motionconnect.com",
           fullName: "Demo User",
+          username: "demouser",
           instrument: "guitar",
           provider: "email",
           createdAt: "2024-01-01T00:00:00Z",
@@ -193,8 +194,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       // Simulate Google OAuth success with a mock user
       const googleUser: User = {
         id: "google_" + Date.now(),
-        email: "google.user@gmail.com",
+        email: "google.user@example.com",
         fullName: "Google User",
+        username: "googleuser" + Date.now(),
         avatar: "https://via.placeholder.com/40",
         provider: "google",
         createdAt: new Date().toISOString(),
@@ -224,6 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         id: "discord_" + Date.now(),
         email: "discord.user@example.com",
         fullName: "Discord User",
+        username: "discorduser" + Date.now(),
         avatar: "https://via.placeholder.com/40",
         provider: "discord" as any,
         createdAt: new Date().toISOString(),
