@@ -480,11 +480,16 @@ const UploadTrack = () => {
 
       // Validate storage capacity before proceeding
       const audioSize = new Blob([audioUrl]).size;
-      const storageValidation = validateStorageCapacity(audioSize);
+      const MAX_SINGLE_FILE = 10 * 1024 * 1024; // 10MB
+      const storageStats = getStorageInfo();
 
-      if (!storageValidation.canStore) {
-        throw new Error(
-          storageValidation.reason || "Storage capacity exceeded",
+      if (audioSize > MAX_SINGLE_FILE) {
+        throw new Error(`File too large (${Math.round(audioSize / 1024 / 1024)}MB). Maximum size is 10MB.`);
+      }
+
+      if (storageStats.usagePercentage > 90) {
+        console.warn("Storage nearly full, will use streaming mode");
+      }
         );
       }
 

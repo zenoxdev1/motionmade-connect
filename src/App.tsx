@@ -21,7 +21,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import UploadTrack from "./pages/UploadTrack";
-import FindMusicians from "./pages/FindMusicians";
+import Musicians from "./pages/Musicians";
 import MyTracks from "./pages/MyTracks";
 import EditTrack from "./pages/EditTrack";
 import Features from "./pages/Features";
@@ -30,7 +30,6 @@ import Pricing from "./pages/Pricing";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import PublicProfile from "./pages/PublicProfile";
-import Discover from "./pages/Discover";
 import NotFound from "./pages/NotFound";
 
 // Initialize real users and enhanced features
@@ -108,10 +107,26 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/musicians"
+                    element={
+                      <ProtectedRoute requireAuth={true}>
+                        <Musicians />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/find-musicians"
                     element={
                       <ProtectedRoute requireAuth={true}>
-                        <FindMusicians />
+                        <Musicians />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/discover"
+                    element={
+                      <ProtectedRoute requireAuth={true}>
+                        <Musicians />
                       </ProtectedRoute>
                     }
                   />
@@ -128,14 +143,6 @@ const App = () => (
                     element={
                       <ProtectedRoute requireAuth={true}>
                         <EditTrack />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/discover"
-                    element={
-                      <ProtectedRoute requireAuth={true}>
-                        <Discover />
                       </ProtectedRoute>
                     }
                   />

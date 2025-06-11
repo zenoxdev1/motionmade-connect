@@ -393,14 +393,14 @@ const Dashboard = () => {
 
               <Card className="group border-pink-500/20 bg-gradient-to-br from-card to-pink-950/10 hover:border-pink-500/40 transition-all duration-300 hover:transform hover:scale-105">
                 <CardContent className="p-4">
-                  <Link to="/discover" className="block">
+                  <Link to="/musicians" className="block">
                     <div className="text-center">
                       <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mx-auto mb-2">
                         <Compass className="w-6 h-6 text-white" />
                       </div>
                       <h3 className="font-semibold text-sm">Discover</h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Swipe through music
+                        Find musicians & music
                       </p>
                     </div>
                   </Link>
@@ -409,7 +409,7 @@ const Dashboard = () => {
 
               <Card className="group border-green-500/20 bg-gradient-to-br from-card to-green-950/10 hover:border-green-500/40 transition-all duration-300 hover:transform hover:scale-105">
                 <CardContent className="p-4">
-                  <Link to="/find-musicians" className="block">
+                  <Link to="/musicians" className="block">
                     <div className="text-center">
                       <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mx-auto mb-2">
                         <Users className="w-6 h-6 text-white" />
@@ -613,7 +613,7 @@ const Dashboard = () => {
                     <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                     <p className="text-muted-foreground">No recent activity</p>
                     <Button size="sm" className="mt-2" asChild>
-                      <Link to="/discover">Explore the community</Link>
+                      <Link to="/musicians">Explore the community</Link>
                     </Button>
                   </div>
                 )}
