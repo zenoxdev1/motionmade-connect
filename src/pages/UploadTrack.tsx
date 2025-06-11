@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Music,
@@ -26,6 +27,13 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
+  Clock,
+  FileAudio,
+  Activity,
+  Mic,
+  Drum,
+  RotateCcw,
+  Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,7 +52,67 @@ interface TrackData {
   trackImage: string;
   file: File | null;
   duration: number;
+  trackType:
+    | "loops"
+    | "starters"
+    | "beats"
+    | "one-shots"
+    | "drums"
+    | "vocals"
+    | "full-track";
 }
+
+const trackTypes = [
+  {
+    value: "full-track",
+    label: "Full Track",
+    description: "Complete song or composition",
+    icon: Music,
+    color: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+  },
+  {
+    value: "loops",
+    label: "Loops",
+    description: "Repeatable musical phrases",
+    icon: RotateCcw,
+    color: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  },
+  {
+    value: "starters",
+    label: "Starters",
+    description: "Song beginnings or musical ideas",
+    icon: Zap,
+    color: "bg-green-500/20 text-green-400 border-green-500/30",
+  },
+  {
+    value: "beats",
+    label: "Beats",
+    description: "Rhythmic patterns and instrumentals",
+    icon: Activity,
+    color: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  },
+  {
+    value: "one-shots",
+    label: "One-Shots",
+    description: "Single hits, samples, or sounds",
+    icon: Zap,
+    color: "bg-pink-500/20 text-pink-400 border-pink-500/30",
+  },
+  {
+    value: "drums",
+    label: "Drums",
+    description: "Drum patterns and percussion",
+    icon: Drum,
+    color: "bg-red-500/20 text-red-400 border-red-500/30",
+  },
+  {
+    value: "vocals",
+    label: "Vocals",
+    description: "Vocal recordings and harmonies",
+    icon: Mic,
+    color: "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
+  },
+];
 
 const UploadTrack = () => {
   const { user } = useAuth();
@@ -70,6 +138,7 @@ const UploadTrack = () => {
     trackImage: "",
     file: null,
     duration: 0,
+    trackType: "full-track",
   });
 
   const genres = [
@@ -95,6 +164,13 @@ const UploadTrack = () => {
     "Funk",
     "Soul",
     "Gospel",
+    "Trap",
+    "Drill",
+    "Lo-Fi",
+    "Synthwave",
+    "Phonk",
+    "Afrobeat",
+    "Latin",
   ];
 
   const musicalKeys = [
@@ -174,10 +250,61 @@ const UploadTrack = () => {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        resolve(result);
+        if (result.startsWith("data:audio/")) {
+          resolve(result);
+        } else {
+          reject(new Error("Invalid audio data format"));
+        }
       };
       reader.onerror = () => reject(new Error("Failed to read file"));
       reader.readAsDataURL(file);
+    });
+  };
+
+  const validateAudioFile = async (file: File): Promise<boolean> => {
+    // Validate file type
+    const allowedTypes = [
+      "audio/mp3",
+      "audio/mpeg",
+      "audio/wav",
+      "audio/ogg",
+      "audio/aac",
+      "audio/x-wav",
+      "audio/wave",
+      "audio/mp4",
+      "audio/m4a",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error(
+        "Please select a valid audio file (MP3, WAV, OGG, AAC, M4A)",
+      );
+    }
+
+    // Validate file size (max 25MB)
+    const maxSize = 25 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error("File size must be less than 25MB");
+    }
+
+    // Try to create audio element to validate
+    return new Promise((resolve) => {
+      const audio = new Audio();
+      const url = URL.createObjectURL(file);
+
+      const cleanup = () => URL.revokeObjectURL(url);
+
+      audio.addEventListener("canplay", () => {
+        cleanup();
+        resolve(true);
+      });
+
+      audio.addEventListener("error", () => {
+        cleanup();
+        resolve(false);
+      });
+
+      audio.src = url;
     });
   };
 
@@ -188,59 +315,48 @@ const UploadTrack = () => {
 
       setUploadError(null);
 
-      // Validate file type
-      const allowedTypes = [
-        "audio/mp3",
-        "audio/mpeg",
-        "audio/wav",
-        "audio/ogg",
-        "audio/aac",
-        "audio/x-wav",
-        "audio/wave",
-      ];
-      if (!allowedTypes.includes(file.type)) {
-        const error = "Please select an MP3, WAV, OGG, or AAC file.";
-        setUploadError(error);
+      try {
+        // Validate the audio file
+        const isValid = await validateAudioFile(file);
+        if (!isValid) {
+          throw new Error(
+            "The selected file is not a valid audio file or is corrupted",
+          );
+        }
+
+        setTrackData((prev) => ({
+          ...prev,
+          file,
+          title: prev.title || file.name.replace(/\.[^/.]+$/, ""),
+        }));
+
+        // Set up audio preview
+        const audio = audioRef.current;
+        if (audio) {
+          const audioUrl = URL.createObjectURL(file);
+          audio.src = audioUrl;
+          audio.load();
+
+          audio.addEventListener("loadedmetadata", () => {
+            setTrackData((prev) => ({
+              ...prev,
+              duration: Math.round(audio.duration),
+            }));
+          });
+        }
+
         toast({
-          title: "Invalid file type",
-          description: error,
-          variant: "destructive",
+          title: "Audio file loaded! 🎵",
+          description: "File validated and ready for upload.",
         });
-        return;
-      }
-
-      // Validate file size (max 20MB)
-      const maxSize = 20 * 1024 * 1024;
-      if (file.size > maxSize) {
-        const error = "Please select a file smaller than 20MB.";
-        setUploadError(error);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : "Invalid audio file";
+        setUploadError(errorMessage);
         toast({
-          title: "File too large",
-          description: error,
+          title: "File validation failed",
+          description: errorMessage,
           variant: "destructive",
-        });
-        return;
-      }
-
-      setTrackData((prev) => ({
-        ...prev,
-        file,
-        title: prev.title || file.name.replace(/\.[^/.]+$/, ""),
-      }));
-
-      // Set up audio preview
-      const audio = audioRef.current;
-      if (audio) {
-        const audioUrl = URL.createObjectURL(file);
-        audio.src = audioUrl;
-        audio.load();
-
-        // Get duration
-        audio.addEventListener("loadedmetadata", () => {
-          setTrackData((prev) => ({
-            ...prev,
-            duration: Math.round(audio.duration),
-          }));
         });
       }
     },
@@ -342,7 +458,8 @@ const UploadTrack = () => {
       try {
         toast({
           title: "Processing audio...",
-          description: "Converting audio file for storage.",
+          description:
+            "Converting audio file for optimal storage and playback.",
         });
 
         audioUrl = await convertFileToBase64(trackData.file);
@@ -370,6 +487,7 @@ const UploadTrack = () => {
         genre: trackData.genre,
         bpm: trackData.bpm,
         musicalKey: trackData.musicalKey,
+        trackType: trackData.trackType,
         tags: trackData.tags
           .split(",")
           .map((tag) => tag.trim())
@@ -405,11 +523,17 @@ const UploadTrack = () => {
         localStorage.setItem("allTracks", JSON.stringify(allTracks));
       }
 
+      // Broadcast real-time update
+      const event = new CustomEvent("tracksUpdated", {
+        detail: { action: "upload", track, userId: user.id },
+      });
+      window.dispatchEvent(event);
+
       setUploadProgress(100);
 
       toast({
         title: "Track uploaded successfully! 🎵",
-        description: "Your track is now available and ready to play.",
+        description: `"${track.title}" is now available and ready to play.`,
       });
 
       // Reset form
@@ -426,6 +550,7 @@ const UploadTrack = () => {
         trackImage: "",
         file: null,
         duration: 0,
+        trackType: "full-track",
       });
 
       if (fileInputRef.current) {
@@ -460,6 +585,10 @@ const UploadTrack = () => {
   const progressPercentage =
     trackData.duration > 0 ? (currentTime / trackData.duration) * 100 : 0;
 
+  const selectedTrackType = trackTypes.find(
+    (type) => type.value === trackData.trackType,
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-950/20">
       <audio ref={audioRef} preload="metadata" />
@@ -487,7 +616,7 @@ const UploadTrack = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">Upload Your Track</h1>
             <p className="text-muted-foreground">
@@ -506,6 +635,56 @@ const UploadTrack = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* File Upload */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Track Type Selection */}
+              <Card className="border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <FileAudio className="w-5 h-5 mr-2" />
+                    Track Type
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {trackTypes.map((type) => {
+                      const Icon = type.icon;
+                      const isSelected = trackData.trackType === type.value;
+                      return (
+                        <Button
+                          key={type.value}
+                          variant={isSelected ? "default" : "outline"}
+                          className={`h-auto p-4 flex flex-col items-center text-center ${
+                            isSelected ? type.color : "hover:bg-muted"
+                          }`}
+                          onClick={() =>
+                            handleInputChange("trackType", type.value)
+                          }
+                        >
+                          <Icon className="w-6 h-6 mb-2" />
+                          <span className="font-medium">{type.label}</span>
+                          <span className="text-xs text-muted-foreground mt-1">
+                            {type.description}
+                          </span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  {selectedTrackType && (
+                    <div className="mt-4 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center space-x-2">
+                        <selectedTrackType.icon className="w-4 h-4 text-purple-400" />
+                        <span className="font-medium">
+                          Selected: {selectedTrackType.label}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {selectedTrackType.description}
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Audio File Upload */}
               <Card className="border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -521,13 +700,14 @@ const UploadTrack = () => {
                     >
                       <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                       <h3 className="text-lg font-semibold mb-2">
-                        Upload your track
+                        Upload your{" "}
+                        {selectedTrackType?.label.toLowerCase() || "track"}
                       </h3>
                       <p className="text-muted-foreground mb-4">
                         Drag and drop your audio file or click to browse
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        Supported formats: MP3, WAV, OGG, AAC (max 20MB)
+                        Supported: MP3, WAV, OGG, AAC, M4A (max 25MB)
                       </p>
                       <input
                         ref={fileInputRef}
@@ -620,6 +800,7 @@ const UploadTrack = () => {
                 </CardContent>
               </Card>
 
+              {/* Track Information */}
               <Card className="border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10">
                 <CardHeader>
                   <CardTitle>Track Information</CardTitle>
@@ -804,7 +985,9 @@ const UploadTrack = () => {
                   </div>
                   <div className="flex items-start space-x-2">
                     <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                    <span>Add detailed descriptions and relevant tags</span>
+                    <span>
+                      Choose the correct track type for better discovery
+                    </span>
                   </div>
                   <div className="flex items-start space-x-2">
                     <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
@@ -829,7 +1012,7 @@ const UploadTrack = () => {
                 ) : (
                   <>
                     <Upload className="w-5 h-5 mr-2" />
-                    Upload Track
+                    Upload {selectedTrackType?.label || "Track"}
                   </>
                 )}
               </Button>
