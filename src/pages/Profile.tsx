@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import {
   Music,
@@ -32,6 +33,9 @@ import {
   Piano,
   Drum,
   Mic,
+  AlertCircle,
+  CheckCircle,
+  AtSign,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -41,16 +45,22 @@ const Profile = () => {
   const { user, updateProfile } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
+    null,
+  );
+  const [checkingUsername, setCheckingUsername] = useState(false);
 
   const [profileData, setProfileData] = useState({
     fullName: user?.fullName || "",
+    username: user?.username || "",
     email: user?.email || "",
     avatar: user?.avatar || "",
     bio: "",
     location: "",
     website: "",
-    instrument: user?.instrument || "",
-    genre: "",
+    favoriteGenres: [] as string[],
+    instruments: [] as string[],
     experienceLevel: "",
     lookingFor: "",
     socialLinks: {
@@ -58,119 +68,15 @@ const Profile = () => {
       youtube: "",
       twitter: "",
     },
-    settings: {
-      profilePublic: true,
+    privacy: {
       showEmail: false,
+      showLocation: true,
       allowMessages: true,
-      allowCollabRequests: true,
+      showOnlineStatus: true,
     },
   });
 
-  useEffect(() => {
-    if (user) {
-      // Load saved profile data from localStorage
-      const savedProfile = localStorage.getItem(`profile_${user.id}`);
-      if (savedProfile) {
-        const parsedProfile = JSON.parse(savedProfile);
-        setProfileData((prev) => ({
-          ...prev,
-          ...parsedProfile,
-          fullName: user.fullName,
-          email: user.email,
-          avatar: user.avatar || parsedProfile.avatar || "",
-          instrument: user.instrument || parsedProfile.instrument || "",
-        }));
-      } else {
-        // Set initial data from user object
-        setProfileData((prev) => ({
-          ...prev,
-          fullName: user.fullName,
-          email: user.email,
-          avatar: user.avatar || "",
-          instrument: user.instrument || "",
-        }));
-      }
-    }
-  }, [user]);
-
-  const handleInputChange = (field: string, value: string) => {
-    setProfileData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleSocialChange = (platform: string, value: string) => {
-    setProfileData((prev) => ({
-      ...prev,
-      socialLinks: {
-        ...prev.socialLinks,
-        [platform]: value,
-      },
-    }));
-  };
-
-  const handleSettingChange = (setting: string, value: boolean) => {
-    setProfileData((prev) => ({
-      ...prev,
-      settings: {
-        ...prev.settings,
-        [setting]: value,
-      },
-    }));
-  };
-
-  const handleSaveProfile = async () => {
-    setIsLoading(true);
-    try {
-      // Save to localStorage
-      localStorage.setItem(`profile_${user?.id}`, JSON.stringify(profileData));
-
-      // Update user context if name, avatar, or instrument changed
-      const updatedUser = {
-        ...user!,
-        fullName: profileData.fullName,
-        avatar: profileData.avatar,
-        instrument: profileData.instrument,
-      };
-      localStorage.setItem("userData", JSON.stringify(updatedUser));
-
-      // Update all users array if needed
-      const allUsers = JSON.parse(localStorage.getItem("allUsers") || "[]");
-      const userIndex = allUsers.findIndex((u: any) => u.id === user?.id);
-      if (userIndex !== -1) {
-        allUsers[userIndex] = updatedUser;
-        localStorage.setItem("allUsers", JSON.stringify(allUsers));
-      }
-
-      // Force re-render by reloading the page data
-      window.location.reload();
-
-      toast({
-        title: "Profile updated! ✨",
-        description: "Your profile has been saved successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error saving profile",
-        description: "Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const instruments = [
-    { value: "guitar", label: "Guitar", icon: Guitar },
-    { value: "piano", label: "Piano/Keyboard", icon: Piano },
-    { value: "drums", label: "Drums", icon: Drum },
-    { value: "vocals", label: "Vocals", icon: Mic },
-    { value: "bass", label: "Bass Guitar", icon: Guitar },
-    { value: "violin", label: "Violin", icon: Music },
-    { value: "saxophone", label: "Saxophone", icon: Music },
-    { value: "other", label: "Other", icon: Music },
-  ];
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
 
   const genres = [
     "Rock",
@@ -188,14 +94,266 @@ const Profile = () => {
     "Punk",
     "Alternative",
     "Indie",
+    "House",
+    "Techno",
+    "Dubstep",
+    "Ambient",
+  ];
+
+  const instrumentOptions = [
+    "Guitar",
+    "Bass Guitar",
+    "Piano",
+    "Keyboard",
+    "Drums",
+    "Vocals",
+    "Violin",
+    "Saxophone",
+    "Trumpet",
+    "Flute",
+    "Cello",
+    "Clarinet",
   ];
 
   const experienceLevels = [
-    { value: "beginner", label: "Beginner (0-2 years)" },
-    { value: "intermediate", label: "Intermediate (2-5 years)" },
-    { value: "advanced", label: "Advanced (5-10 years)" },
-    { value: "professional", label: "Professional (10+ years)" },
+    "Beginner",
+    "Intermediate",
+    "Advanced",
+    "Professional",
   ];
+
+  const lookingForOptions = [
+    "Band Members",
+    "Collaborators",
+    "Session Musicians",
+    "Jam Partners",
+    "Producers",
+    "Songwriters",
+    "Students",
+    "Teachers",
+  ];
+
+  useEffect(() => {
+    // Load existing profile data
+    const loadProfileData = () => {
+      if (user) {
+        const storedProfile = JSON.parse(
+          localStorage.getItem(`profile_${user.id}`) || "{}",
+        );
+
+        setProfileData((prev) => ({
+          ...prev,
+          fullName: user.fullName,
+          username: user.username || "",
+          email: user.email,
+          avatar: user.avatar || "",
+          ...storedProfile,
+        }));
+      }
+    };
+
+    loadProfileData();
+  }, [user]);
+
+  const generateUsername = (fullName: string) => {
+    const base = fullName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "")
+      .substring(0, 15);
+    const suffix = Math.floor(Math.random() * 1000);
+    return `${base}${suffix}`;
+  };
+
+  const checkUsernameAvailability = async (username: string) => {
+    if (!username || username.length < 3) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    setCheckingUsername(true);
+    try {
+      // Check against all users
+      const allUsers = JSON.parse(localStorage.getItem("allUsers") || "[]");
+      const isUsernameExists = allUsers.some(
+        (u: any) =>
+          u.username?.toLowerCase() === username.toLowerCase() &&
+          u.id !== user?.id,
+      );
+
+      // Username validation
+      const isValidFormat = /^[a-zA-Z0-9_-]{3,20}$/.test(username);
+
+      if (!isValidFormat) {
+        setUsernameAvailable(false);
+        return;
+      }
+
+      setUsernameAvailable(!isUsernameExists);
+    } catch (error) {
+      console.error("Error checking username:", error);
+      setUsernameAvailable(null);
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: any) => {
+    setProfileData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    setHasChanges(true);
+
+    // Check username availability
+    if (field === "username") {
+      checkUsernameAvailability(value);
+    }
+  };
+
+  const handleSocialLinkChange = (platform: string, value: string) => {
+    setProfileData((prev) => ({
+      ...prev,
+      socialLinks: {
+        ...prev.socialLinks,
+        [platform]: value,
+      },
+    }));
+    setHasChanges(true);
+  };
+
+  const handlePrivacyChange = (setting: string, value: boolean) => {
+    setProfileData((prev) => ({
+      ...prev,
+      privacy: {
+        ...prev.privacy,
+        [setting]: value,
+      },
+    }));
+    setHasChanges(true);
+  };
+
+  const handleGenreToggle = (genre: string) => {
+    setProfileData((prev) => ({
+      ...prev,
+      favoriteGenres: prev.favoriteGenres.includes(genre)
+        ? prev.favoriteGenres.filter((g) => g !== genre)
+        : [...prev.favoriteGenres, genre],
+    }));
+    setHasChanges(true);
+  };
+
+  const handleInstrumentToggle = (instrument: string) => {
+    setProfileData((prev) => ({
+      ...prev,
+      instruments: prev.instruments.includes(instrument)
+        ? prev.instruments.filter((i) => i !== instrument)
+        : [...prev.instruments, instrument],
+    }));
+    setHasChanges(true);
+  };
+
+  const handleProfilePictureChange = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please select an image smaller than 5MB.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file type
+      if (!file.type.startsWith("image/")) {
+        toast({
+          title: "Invalid file type",
+          description: "Please select an image file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setProfilePicture(file);
+
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProfileData((prev) => ({
+          ...prev,
+          avatar: e.target?.result as string,
+        }));
+        setHasChanges(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+
+    // Validate username if changed
+    if (profileData.username && profileData.username !== user.username) {
+      if (usernameAvailable === false) {
+        toast({
+          title: "Username not available",
+          description: "Please choose a different username.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    setIsLoading(true);
+    try {
+      // Update user basic info
+      await updateProfile({
+        fullName: profileData.fullName,
+        username: profileData.username,
+        avatar: profileData.avatar,
+      });
+
+      // Save extended profile data
+      const profileToSave = {
+        bio: profileData.bio,
+        location: profileData.location,
+        website: profileData.website,
+        favoriteGenres: profileData.favoriteGenres,
+        instruments: profileData.instruments,
+        experienceLevel: profileData.experienceLevel,
+        lookingFor: profileData.lookingFor,
+        socialLinks: profileData.socialLinks,
+        privacy: profileData.privacy,
+        profilePicture: profileData.avatar,
+        updatedAt: new Date().toISOString(),
+      };
+
+      localStorage.setItem(`profile_${user.id}`, JSON.stringify(profileToSave));
+
+      toast({
+        title: "Profile saved! ✨",
+        description: "Your profile has been updated successfully.",
+      });
+
+      setHasChanges(false);
+    } catch (error) {
+      console.error("Save profile error:", error);
+      toast({
+        title: "Save failed",
+        description: "Could not save your profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const profileUrl = profileData.username
+    ? `${window.location.origin}/profile/${profileData.username}`
+    : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-950/20">
@@ -218,19 +376,26 @@ const Profile = () => {
               </span>
             </div>
           </div>
-          <Button onClick={handleSaveProfile} disabled={isLoading}>
-            <Save className="w-4 h-4 mr-2" />
-            {isLoading ? "Saving..." : "Save Changes"}
-          </Button>
+
+          {hasChanges && (
+            <Button
+              onClick={handleSaveProfile}
+              disabled={isLoading}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isLoading ? "Saving..." : "Save Changes"}
+            </Button>
+          )}
         </div>
       </nav>
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Profile & Settings</h1>
+            <h1 className="text-3xl font-bold mb-2">Profile Settings</h1>
             <p className="text-muted-foreground">
-              Customize your profile and privacy settings
+              Customize your musician profile and account settings
             </p>
           </div>
 
@@ -241,98 +406,81 @@ const Profile = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <User className="w-5 h-5 mr-2" />
-                    Profile Picture
+                    Profile Photo
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-center space-y-4">
-                  <Avatar className="w-32 h-32 mx-auto">
-                    <AvatarImage
-                      src={profileData.avatar || user?.avatar}
-                      alt={profileData.fullName}
-                    />
-                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white text-4xl">
-                      {profileData.fullName
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() =>
-                      document.getElementById("avatar-upload")?.click()
-                    }
-                  >
-                    <Camera className="w-4 h-4 mr-2" />
-                    Change Photo
-                  </Button>
-                  <input
-                    id="avatar-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        // In a real app, you'd upload to a server
-                        // For now, we'll use a placeholder URL
-                        const imageUrl = URL.createObjectURL(file);
-                        // Save to profile data
-                        setProfileData((prev) => ({
-                          ...prev,
-                          avatar: imageUrl,
-                        }));
+                <CardContent className="space-y-4">
+                  <div className="flex flex-col items-center space-y-4">
+                    <Avatar className="w-32 h-32 border-4 border-purple-500/20">
+                      <AvatarImage src={profileData.avatar} />
+                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white text-2xl">
+                        {profileData.fullName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
 
-                        // Update user data
-                        const updatedUser = { ...user!, avatar: imageUrl };
-                        localStorage.setItem(
-                          "userData",
-                          JSON.stringify(updatedUser),
-                        );
-                      }
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Max file size: 5MB. JPG, PNG supported.
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10">
-                <CardHeader>
-                  <CardTitle>Quick Stats</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Member since
-                      </span>
-                      <span className="text-sm">
-                        {new Date(user?.createdAt || "").toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Profile views
-                      </span>
-                      <span className="text-sm">127</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">
-                        Connections
-                      </span>
-                      <span className="text-sm">23</span>
+                    <div className="text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleProfilePictureChange}
+                        className="hidden"
+                        id="profile-picture"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          document.getElementById("profile-picture")?.click()
+                        }
+                      >
+                        <Camera className="w-4 h-4 mr-2" />
+                        Change Photo
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+
+              {profileUrl && (
+                <Card className="border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <Globe className="w-5 h-5 mr-2" />
+                      Public Profile
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Your public profile URL:
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <Input value={profileUrl} readOnly className="text-xs" />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(profileUrl);
+                          toast({
+                            title: "URL copied!",
+                            description: "Profile URL copied to clipboard.",
+                          });
+                        }}
+                      >
+                        Copy
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
-            {/* Main Profile Form */}
+            {/* Main Settings */}
             <div className="lg:col-span-2 space-y-6">
+              {/* Basic Information */}
               <Card className="border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
                 <CardHeader>
                   <CardTitle>Basic Information</CardTitle>
@@ -350,18 +498,78 @@ const Profile = () => {
                         placeholder="Your full name"
                       />
                     </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={profileData.email}
-                        onChange={(e) =>
-                          handleInputChange("email", e.target.value)
-                        }
-                        placeholder="your@email.com"
-                      />
+                      <Label htmlFor="username">Username</Label>
+                      <div className="relative">
+                        <AtSign className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                          id="username"
+                          value={profileData.username}
+                          onChange={(e) =>
+                            handleInputChange("username", e.target.value)
+                          }
+                          placeholder="Choose a username"
+                          className="pl-10"
+                        />
+                        {checkingUsername && (
+                          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                            <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                        {!checkingUsername && usernameAvailable === true && (
+                          <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-green-500" />
+                        )}
+                        {!checkingUsername && usernameAvailable === false && (
+                          <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-red-500" />
+                        )}
+                      </div>
+                      {profileData.username &&
+                        profileData.username.length > 0 && (
+                          <div className="text-xs">
+                            {usernameAvailable === false && (
+                              <p className="text-red-500">
+                                Username not available or invalid (3-20
+                                characters, letters, numbers, _ and - only)
+                              </p>
+                            )}
+                            {usernameAvailable === true && (
+                              <p className="text-green-500">
+                                Username is available!
+                              </p>
+                            )}
+                            {!profileData.username && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const generated = generateUsername(
+                                    profileData.fullName,
+                                  );
+                                  handleInputChange("username", generated);
+                                }}
+                                className="p-0 h-auto text-xs text-purple-400 hover:text-purple-300"
+                              >
+                                Generate username
+                              </Button>
+                            )}
+                          </div>
+                        )}
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={profileData.email}
+                      disabled
+                      className="bg-muted"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Email cannot be changed. Contact support if needed.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -384,9 +592,10 @@ const Profile = () => {
                         onChange={(e) =>
                           handleInputChange("location", e.target.value)
                         }
-                        placeholder="City, Country"
+                        placeholder="City, State/Country"
                       />
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="website">Website</Label>
                       <Input
@@ -395,71 +604,22 @@ const Profile = () => {
                         onChange={(e) =>
                           handleInputChange("website", e.target.value)
                         }
-                        placeholder="https://your-website.com"
+                        placeholder="https://yourwebsite.com"
                       />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
+              {/* Musical Information */}
               <Card className="border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10">
                 <CardHeader>
                   <CardTitle>Musical Information</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="instrument">Primary Instrument</Label>
-                      <Select
-                        value={profileData.instrument}
-                        onValueChange={(value) =>
-                          handleInputChange("instrument", value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select instrument" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {instruments.map((instrument) => (
-                            <SelectItem
-                              key={instrument.value}
-                              value={instrument.value}
-                            >
-                              <div className="flex items-center">
-                                <instrument.icon className="w-4 h-4 mr-2" />
-                                {instrument.label}
-                              </div>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="genre">Favorite Genre</Label>
-                      <Select
-                        value={profileData.genre}
-                        onValueChange={(value) =>
-                          handleInputChange("genre", value)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select genre" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {genres.map((genre) => (
-                            <SelectItem key={genre} value={genre.toLowerCase()}>
-                              {genre}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="experience">Experience Level</Label>
+                      <Label>Experience Level</Label>
                       <Select
                         value={profileData.experienceLevel}
                         onValueChange={(value) =>
@@ -467,12 +627,12 @@ const Profile = () => {
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select experience" />
+                          <SelectValue placeholder="Select experience level" />
                         </SelectTrigger>
                         <SelectContent>
                           {experienceLevels.map((level) => (
-                            <SelectItem key={level.value} value={level.value}>
-                              {level.label}
+                            <SelectItem key={level} value={level}>
+                              {level}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -480,7 +640,7 @@ const Profile = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="lookingFor">Looking For</Label>
+                      <Label>Looking For</Label>
                       <Select
                         value={profileData.lookingFor}
                         onValueChange={(value) =>
@@ -491,137 +651,196 @@ const Profile = () => {
                           <SelectValue placeholder="What are you looking for?" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="band">Join a Band</SelectItem>
-                          <SelectItem value="collaborators">
-                            Find Collaborators
-                          </SelectItem>
-                          <SelectItem value="jam">Jam Sessions</SelectItem>
-                          <SelectItem value="mentor">Find a Mentor</SelectItem>
-                          <SelectItem value="students">
-                            Teach Students
-                          </SelectItem>
+                          {lookingForOptions.map((option) => (
+                            <SelectItem key={option} value={option}>
+                              {option}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Favorite Genres</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {genres.map((genre) => (
+                        <Button
+                          key={genre}
+                          variant={
+                            profileData.favoriteGenres.includes(genre)
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => handleGenreToggle(genre)}
+                          className="justify-start"
+                        >
+                          {genre}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Instruments</Label>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {instrumentOptions.map((instrument) => (
+                        <Button
+                          key={instrument}
+                          variant={
+                            profileData.instruments.includes(instrument)
+                              ? "default"
+                              : "outline"
+                          }
+                          size="sm"
+                          onClick={() => handleInstrumentToggle(instrument)}
+                          className="justify-start"
+                        >
+                          {instrument}
+                        </Button>
+                      ))}
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
+              {/* Social Links */}
               <Card className="border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
                 <CardHeader>
                   <CardTitle>Social Links</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-3">
-                      <Instagram className="w-5 h-5 text-pink-500" />
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram">Instagram</Label>
+                    <div className="relative">
+                      <Instagram className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
+                        id="instagram"
                         value={profileData.socialLinks.instagram}
                         onChange={(e) =>
-                          handleSocialChange("instagram", e.target.value)
+                          handleSocialLinkChange("instagram", e.target.value)
                         }
-                        placeholder="Instagram username or URL"
-                        className="flex-1"
+                        placeholder="https://instagram.com/yourusername"
+                        className="pl-10"
                       />
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Youtube className="w-5 h-5 text-red-500" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="youtube">YouTube</Label>
+                    <div className="relative">
+                      <Youtube className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
+                        id="youtube"
                         value={profileData.socialLinks.youtube}
                         onChange={(e) =>
-                          handleSocialChange("youtube", e.target.value)
+                          handleSocialLinkChange("youtube", e.target.value)
                         }
-                        placeholder="YouTube channel URL"
-                        className="flex-1"
+                        placeholder="https://youtube.com/channel/yourchannel"
+                        className="pl-10"
                       />
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <Twitter className="w-5 h-5 text-blue-400" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="twitter">Twitter</Label>
+                    <div className="relative">
+                      <Twitter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                       <Input
+                        id="twitter"
                         value={profileData.socialLinks.twitter}
                         onChange={(e) =>
-                          handleSocialChange("twitter", e.target.value)
+                          handleSocialLinkChange("twitter", e.target.value)
                         }
-                        placeholder="Twitter/X username"
-                        className="flex-1"
+                        placeholder="https://twitter.com/yourusername"
+                        className="pl-10"
                       />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10">
+              {/* Privacy Settings */}
+              <Card className="border-green-500/20 bg-gradient-to-br from-card to-green-950/10">
                 <CardHeader>
                   <CardTitle>Privacy Settings</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label>Public Profile</Label>
+                      <Label>Show Email Publicly</Label>
                       <p className="text-sm text-muted-foreground">
-                        Allow others to find and view your profile
+                        Display your email on your public profile
                       </p>
                     </div>
                     <Switch
-                      checked={profileData.settings.profilePublic}
+                      checked={profileData.privacy.showEmail}
                       onCheckedChange={(value) =>
-                        handleSettingChange("profilePublic", value)
+                        handlePrivacyChange("showEmail", value)
                       }
                     />
                   </div>
 
-                  <Separator />
-
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label>Show Email</Label>
+                      <Label>Show Location</Label>
                       <p className="text-sm text-muted-foreground">
-                        Display email address on your public profile
+                        Display your location on your profile
                       </p>
                     </div>
                     <Switch
-                      checked={profileData.settings.showEmail}
+                      checked={profileData.privacy.showLocation}
                       onCheckedChange={(value) =>
-                        handleSettingChange("showEmail", value)
+                        handlePrivacyChange("showLocation", value)
                       }
                     />
                   </div>
-
-                  <Separator />
 
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label>Allow Messages</Label>
                       <p className="text-sm text-muted-foreground">
-                        Let other musicians send you direct messages
+                        Let other musicians message you directly
                       </p>
                     </div>
                     <Switch
-                      checked={profileData.settings.allowMessages}
+                      checked={profileData.privacy.allowMessages}
                       onCheckedChange={(value) =>
-                        handleSettingChange("allowMessages", value)
+                        handlePrivacyChange("allowMessages", value)
                       }
                     />
                   </div>
 
-                  <Separator />
-
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label>Collaboration Requests</Label>
+                      <Label>Show Online Status</Label>
                       <p className="text-sm text-muted-foreground">
-                        Receive invitations to collaborate on projects
+                        Show when you're online or last active
                       </p>
                     </div>
                     <Switch
-                      checked={profileData.settings.allowCollabRequests}
+                      checked={profileData.privacy.showOnlineStatus}
                       onCheckedChange={(value) =>
-                        handleSettingChange("allowCollabRequests", value)
+                        handlePrivacyChange("showOnlineStatus", value)
                       }
                     />
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Save Button */}
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleSaveProfile}
+                  disabled={isLoading || !hasChanges}
+                  size="lg"
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  {isLoading ? "Saving..." : "Save Profile"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
