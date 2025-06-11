@@ -484,12 +484,13 @@ const UploadTrack = () => {
       const storageStats = getStorageInfo();
 
       if (audioSize > MAX_SINGLE_FILE) {
-        throw new Error(`File too large (${Math.round(audioSize / 1024 / 1024)}MB). Maximum size is 10MB.`);
+        throw new Error(
+          `File too large (${Math.round(audioSize / 1024 / 1024)}MB). Maximum size is 10MB.`,
+        );
       }
 
       if (storageStats.usagePercentage > 90) {
         console.warn("Storage nearly full, will use streaming mode");
-      }
       }
 
       const trackId = Date.now().toString();
