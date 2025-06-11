@@ -23,6 +23,7 @@ interface AuthContextType {
   signUp: (data: SignUpData) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
+  signInWithDiscord: () => Promise<void>;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
 }
@@ -198,6 +199,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(false);
     }
   };
+
+  const signInWithDiscord = async (): Promise<void> => {
+    setLoading(true);
+    try {
+      console.log("Discord sign in - using local simulation");
+
+      // Simulate Discord OAuth success with a mock user
+      const discordUser: User = {
+        id: "discord_" + Date.now(),
+        email: "discord.user@example.com",
+        fullName: "Discord User",
+        avatar: "https://via.placeholder.com/40",
+        provider: "discord" as any,
+        createdAt: new Date().toISOString(),
+      };
+
+      const token = "discord_token_" + Date.now();
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("userData", JSON.stringify(discordUser));
+      setUser(discordUser);
+
+      console.log("✅ Discord sign in successful:", discordUser);
+    } catch (error) {
+      console.error("❌ Discord sign in error:", error);
+      throw new Error("Discord sign in failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
   const signOut = async (): Promise<void> => {
     setLoading(true);
     try {
@@ -220,6 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     signUp,
     signIn,
     signInWithGoogle,
+    signInWithDiscord,
     signOut,
     isAuthenticated,
   };

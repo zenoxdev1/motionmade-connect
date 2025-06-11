@@ -187,14 +187,10 @@ const UploadTrack = () => {
 
       // Wait for upload to complete
       await new Promise((resolve) => {
-        const checkProgress = () => {
-          if (uploadProgress >= 100) {
-            resolve(true);
-          } else {
-            setTimeout(checkProgress, 100);
-          }
-        };
-        checkProgress();
+        setTimeout(() => {
+          setUploadProgress(100);
+          resolve(true);
+        }, 2000); // Complete upload after 2 seconds
       });
 
       // Save track data to localStorage

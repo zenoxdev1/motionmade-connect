@@ -11,7 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Mail, Lock, ArrowLeft, Chrome } from "lucide-react";
+import {
+  Music,
+  Mail,
+  Lock,
+  ArrowLeft,
+  Chrome,
+  MessageSquare,
+} from "lucide-react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +35,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>;
 
 const Login = () => {
-  const { signIn, signInWithGoogle } = useAuth();
+  const { signIn, signInWithGoogle, signInWithDiscord } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -88,6 +95,25 @@ const Login = () => {
     }
   };
 
+  const handleDiscordSignIn = async () => {
+    try {
+      await signInWithDiscord();
+      toast({
+        title: "Welcome!",
+        description: "You have successfully signed in with Discord.",
+      });
+      navigate(from, { replace: true });
+    } catch (error) {
+      toast({
+        title: "Discord sign in failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to sign in with Discord",
+        variant: "destructive",
+      });
+    }
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-950/20 flex items-center justify-center p-4">
       {/* Background decoration */}
@@ -129,6 +155,15 @@ const Login = () => {
             >
               <Chrome className="w-4 h-4 mr-2" />
               {isGoogleLoading ? "Signing in..." : "Continue with Google"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full border-blue-500/30 hover:bg-blue-500/10"
+              type="button"
+              onClick={handleDiscordSignIn}
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Continue with Discord
             </Button>
           </div>
 

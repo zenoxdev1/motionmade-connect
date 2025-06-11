@@ -45,6 +45,7 @@ const Profile = () => {
   const [profileData, setProfileData] = useState({
     fullName: user?.fullName || "",
     email: user?.email || "",
+    avatar: user?.avatar || "",
     bio: "",
     location: "",
     website: "",
@@ -66,11 +67,29 @@ const Profile = () => {
   });
 
   useEffect(() => {
-    // Load saved profile data from localStorage
-    const savedProfile = localStorage.getItem(`profile_${user?.id}`);
-    if (savedProfile) {
-      const parsedProfile = JSON.parse(savedProfile);
-      setProfileData({ ...profileData, ...parsedProfile });
+    if (user) {
+      // Load saved profile data from localStorage
+      const savedProfile = localStorage.getItem(`profile_${user.id}`);
+      if (savedProfile) {
+        const parsedProfile = JSON.parse(savedProfile);
+        setProfileData((prev) => ({
+          ...prev,
+          ...parsedProfile,
+          fullName: user.fullName,
+          email: user.email,
+          avatar: user.avatar || parsedProfile.avatar || "",
+          instrument: user.instrument || parsedProfile.instrument || "",
+        }));
+      } else {
+        // Set initial data from user object
+        setProfileData((prev) => ({
+          ...prev,
+          fullName: user.fullName,
+          email: user.email,
+          avatar: user.avatar || "",
+          instrument: user.instrument || "",
+        }));
+      }
     }
   }, [user]);
 
@@ -107,12 +126,25 @@ const Profile = () => {
       // Save to localStorage
       localStorage.setItem(`profile_${user?.id}`, JSON.stringify(profileData));
 
-      // Update user context if name changed
-      if (profileData.fullName !== user?.fullName) {
-        const updatedUser = { ...user!, fullName: profileData.fullName };
-        localStorage.setItem("userData", JSON.stringify(updatedUser));
-        // updateProfile would be implemented in AuthContext
+      // Update user context if name, avatar, or instrument changed
+      const updatedUser = {
+        ...user!,
+        fullName: profileData.fullName,
+        avatar: profileData.avatar,
+        instrument: profileData.instrument,
+      };
+      localStorage.setItem("userData", JSON.stringify(updatedUser));
+
+      // Update all users array if needed
+      const allUsers = JSON.parse(localStorage.getItem("allUsers") || "[]");
+      const userIndex = allUsers.findIndex((u: any) => u.id === user?.id);
+      if (userIndex !== -1) {
+        allUsers[userIndex] = updatedUser;
+        localStorage.setItem("allUsers", JSON.stringify(allUsers));
       }
+
+      // Force re-render by reloading the page data
+      window.location.reload();
 
       toast({
         title: "Profile updated! ✨",
@@ -214,19 +246,54 @@ const Profile = () => {
                 </CardHeader>
                 <CardContent className="text-center space-y-4">
                   <Avatar className="w-32 h-32 mx-auto">
-                    <AvatarImage src={user?.avatar} alt={user?.fullName} />
+                    <AvatarImage
+                      src={profileData.avatar || user?.avatar}
+                      alt={profileData.fullName}
+                    />
                     <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white text-4xl">
-                      {user?.fullName
+                      {profileData.fullName
                         ?.split(" ")
                         .map((n) => n[0])
                         .join("")
                         .toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <Button variant="outline" className="w-full">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() =>
+                      document.getElementById("avatar-upload")?.click()
+                    }
+                  >
                     <Camera className="w-4 h-4 mr-2" />
                     Change Photo
                   </Button>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // In a real app, you'd upload to a server
+                        // For now, we'll use a placeholder URL
+                        const imageUrl = URL.createObjectURL(file);
+                        // Save to profile data
+                        setProfileData((prev) => ({
+                          ...prev,
+                          avatar: imageUrl,
+                        }));
+
+                        // Update user data
+                        const updatedUser = { ...user!, avatar: imageUrl };
+                        localStorage.setItem(
+                          "userData",
+                          JSON.stringify(updatedUser),
+                        );
+                      }
+                    }}
+                  />
                   <p className="text-xs text-muted-foreground">
                     Max file size: 5MB. JPG, PNG supported.
                   </p>

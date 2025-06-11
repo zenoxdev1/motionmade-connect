@@ -25,6 +25,7 @@ import {
   User,
   ArrowLeft,
   Chrome,
+  MessageSquare,
   Guitar,
   Mic,
   Piano,
@@ -56,7 +57,7 @@ const signupSchema = z
 type SignupForm = z.infer<typeof signupSchema>;
 
 const Signup = () => {
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signInWithGoogle, signInWithDiscord } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -119,6 +120,25 @@ const Signup = () => {
     }
   };
 
+  const handleDiscordSignUp = async () => {
+    try {
+      await signInWithDiscord();
+      toast({
+        title: "Welcome to Motion Connect! 🎵",
+        description: "Your account has been created successfully with Discord.",
+      });
+      navigate(from, { replace: true });
+    } catch (error) {
+      toast({
+        title: "Discord sign up failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to sign up with Discord",
+        variant: "destructive",
+      });
+    }
+  };
   const instruments = [
     { value: "guitar", label: "Guitar", icon: Guitar },
     { value: "piano", label: "Piano/Keyboard", icon: Piano },
@@ -173,6 +193,15 @@ const Signup = () => {
             >
               <Chrome className="w-4 h-4 mr-2" />
               {isGoogleLoading ? "Creating account..." : "Continue with Google"}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full border-blue-500/30 hover:bg-blue-500/10"
+              type="button"
+              onClick={handleDiscordSignUp}
+            >
+              <MessageSquare className="w-4 h-4 mr-2" />
+              Continue with Discord
             </Button>
           </div>
 
