@@ -106,6 +106,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem("authToken", token);
       localStorage.setItem("userData", JSON.stringify(mockUser));
 
+      // Store in list of all users for later sign in
+      const allUsers = JSON.parse(localStorage.getItem("allUsers") || "[]");
+      allUsers.push(mockUser);
+      localStorage.setItem("allUsers", JSON.stringify(allUsers));
+
       setUser(mockUser);
       console.log("✅ Sign up successful:", mockUser);
     } catch (error) {
