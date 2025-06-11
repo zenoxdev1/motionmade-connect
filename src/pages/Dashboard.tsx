@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import {
   Music,
   Users,
@@ -22,12 +23,19 @@ import {
   Heart,
   MessageCircle,
   Eye,
+  Compass,
+  BarChart3,
+  Calendar,
+  Globe,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const { playTrack } = useMusicPlayer();
+  const { toast } = useToast();
   const [userStats, setUserStats] = useState({
     tracksCount: 0,
     connectionsCount: 0,
@@ -40,79 +48,114 @@ const Dashboard = () => {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load user statistics from localStorage
-    const loadUserStats = () => {
-      const userTracks = JSON.parse(
-        localStorage.getItem(`tracks_${user?.id}`) || "[]",
-      );
-      const connections = JSON.parse(
-        localStorage.getItem(`connections_${user?.id}`) || "[]",
-      );
-      const profileData = JSON.parse(
-        localStorage.getItem(`profile_${user?.id}`) || "{}",
-      );
-
-      const totalPlays = userTracks.reduce(
-        (sum: number, track: any) => sum + (track.plays || 0),
-        0,
-      );
-      const totalLikes = userTracks.reduce(
-        (sum: number, track: any) => sum + (track.likes || 0),
-        0,
-      );
-
-      setUserStats({
-        tracksCount: userTracks.length,
-        connectionsCount: connections.length + 23, // Base connections for demo
-        totalPlays: totalPlays + 1547, // Base plays for demo
-        totalLikes: totalLikes + 234, // Base likes for demo
-        profileViews: 127 + userTracks.length * 15, // Calculated views
-        messagesCount: 8, // Demo messages
-      });
-
-      setRecentTracks(userTracks.slice(-3).reverse()); // Last 3 tracks
-
-      // Generate recent activity based on user data
-      const activities = [
-        {
-          type: "track_play",
-          message: `Your track "${userTracks[0]?.title || "Demo Track"}" was played 12 times`,
-          time: "2 hours ago",
-          icon: Play,
-        },
-        {
-          type: "new_connection",
-          message: "Sarah M. connected with you",
-          time: "4 hours ago",
-          icon: Users,
-        },
-        {
-          type: "track_like",
-          message: `Someone liked your track "${userTracks[0]?.title || "Demo Track"}"`,
-          time: "6 hours ago",
-          icon: Heart,
-        },
-        {
-          type: "profile_view",
-          message: "Your profile was viewed 5 times today",
-          time: "1 day ago",
-          icon: Eye,
-        },
-      ];
-
-      setRecentActivity(activities);
-    };
-
     if (user) {
       loadUserStats();
+      loadRecentTracks();
+      loadRecentActivity();
     }
   }, [user]);
+
+  const loadUserStats = () => {
+    if (!user) return;
+
+    const userTracks = JSON.parse(
+      localStorage.getItem(`tracks_${user.id}`) || "[]",
+    );
+    const connections = JSON.parse(
+      localStorage.getItem(`connections_${user.id}`) || "[]",
+    );
+    const messages = JSON.parse(
+      localStorage.getItem(`conversations_${user.id}`) || "[]",
+    );
+
+    const totalPlays = userTracks.reduce(
+      (sum: number, track: any) => sum + (track.plays || 0),
+      0,
+    );
+    const totalLikes = userTracks.reduce(
+      (sum: number, track: any) => sum + (track.likes || 0),
+      0,
+    );
+
+    setUserStats({
+      tracksCount: userTracks.length,
+      connectionsCount: connections.filter((c: any) => c.status === "accepted")
+        .length,
+      totalPlays,
+      totalLikes,
+      profileViews: Math.floor(Math.random() * 100) + totalPlays, // Simulated
+      messagesCount: messages.reduce(
+        (sum: number, conv: any) => sum + (conv.unreadCount || 0),
+        0,
+      ),
+    });
+  };
+
+  const loadRecentTracks = () => {
+    if (!user) return;
+
+    const userTracks = JSON.parse(
+      localStorage.getItem(`tracks_${user.id}`) || "[]",
+    );
+    const sortedTracks = userTracks
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime(),
+      )
+      .slice(0, 5);
+    setRecentTracks(sortedTracks);
+  };
+
+  const loadRecentActivity = () => {
+    const allTracks = JSON.parse(localStorage.getItem("allTracks") || "[]");
+    const recentTracks = allTracks
+      .filter((track: any) => track.userId !== user?.id)
+      .sort(
+        (a: any, b: any) =>
+          new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime(),
+      )
+      .slice(0, 10);
+    setRecentActivity(recentTracks);
+  };
 
   const handleSignOut = async () => {
     try {
       await signOut();
+      toast({
+        title: "Signed out successfully",
+        description: "See you next time!",
+      });
     } catch (error) {
-      console.error("Sign out error:", error);
+      toast({
+        title: "Error signing out",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePlayTrack = async (track: any) => {
+    try {
+      await playTrack(
+        {
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          duration: track.duration,
+          audioUrl: track.audioUrl,
+          trackImage: track.trackImage,
+          allowDownload: track.allowDownload,
+          likes: track.likes,
+        },
+        [track],
+        true, // Auto-play enabled
+      );
+    } catch (error) {
+      toast({
+        title: "Playback failed",
+        description: "Unable to play this track.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -131,6 +174,16 @@ const Dashboard = () => {
       default:
         return Music;
     }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
   };
 
   const InstrumentIcon = getInstrumentIcon(user?.instrument);
@@ -157,225 +210,133 @@ const Dashboard = () => {
               </Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
-              <Link to={`/profile/${user?.username || "profile"}`}>
-                <Eye className="w-4 h-4 mr-2" />
-                Public Profile
-              </Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
               <Link to="/profile">
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
+                <User className="w-4 h-4 mr-2" />
+                Profile
               </Link>
             </Button>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
-            <Avatar>
-              <AvatarImage src={user?.avatar} alt={user?.fullName} />
-              <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white">
-                {user?.fullName
-                  ?.split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
           </div>
         </div>
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">
-            Welcome back, {user?.fullName}! 🎵
-          </h1>
-          <p className="text-muted-foreground">
-            Ready to create some music magic today?
-          </p>
-        </div>
+        <div className="max-w-7xl mx-auto">
+          {/* Welcome Section */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">
+              Welcome back, {user?.fullName}! 👋
+            </h1>
+            <p className="text-muted-foreground">
+              Ready to create some amazing music today?
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Profile & Quick Actions */}
-          <div className="space-y-6">
-            {/* Profile Card */}
-            <Card className="border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
-              <CardHeader className="text-center">
-                <Avatar className="w-20 h-20 mx-auto mb-4">
-                  <AvatarImage src={user?.avatar} alt={user?.fullName} />
+          {/* User Profile Card */}
+          <Card className="mb-8 border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-6">
+                <Avatar className="w-20 h-20 border-2 border-purple-500/20">
+                  <AvatarImage src={user?.avatar} />
                   <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white text-xl">
                     {user?.fullName
                       ?.split(" ")
                       .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()}
+                      .join("")}
                   </AvatarFallback>
                 </Avatar>
-                <CardTitle className="text-xl">{user?.fullName}</CardTitle>
-                <p className="text-muted-foreground">{user?.email}</p>
-                {user?.instrument && (
-                  <Badge variant="secondary" className="mt-2">
-                    <InstrumentIcon className="w-3 h-3 mr-1" />
-                    {user.instrument.charAt(0).toUpperCase() +
-                      user.instrument.slice(1)}
-                  </Badge>
-                )}
-                <Badge
-                  variant={user?.provider === "google" ? "default" : "outline"}
-                  className="mt-1"
-                >
-                  {user?.provider === "google"
-                    ? "🔗 Google Account"
-                    : "📧 Email Account"}
-                </Badge>
-              </CardHeader>
-            </Card>
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold mb-1">{user?.fullName}</h2>
+                  <p className="text-muted-foreground mb-2">
+                    @{user?.username}
+                  </p>
+                  <div className="flex items-center space-x-4">
+                    {user?.instrument && (
+                      <div className="flex items-center space-x-1">
+                        <InstrumentIcon className="w-4 h-4 text-purple-400" />
+                        <span className="text-sm">{user.instrument}</span>
+                      </div>
+                    )}
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/profile">
+                        <Settings className="w-4 h-4 mr-2" />
+                        Edit Profile
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to={`/profile/${user?.username}`}>
+                        <Globe className="w-4 h-4 mr-2" />
+                        View Public Profile
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Quick Actions */}
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <Card className="border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
+              <CardContent className="p-4 text-center">
+                <Music className="w-8 h-8 mx-auto mb-2 text-purple-400" />
+                <div className="text-2xl font-bold">
+                  {userStats.tracksCount}
+                </div>
+                <div className="text-sm text-muted-foreground">Tracks</div>
+              </CardContent>
+            </Card>
             <Card className="border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10">
-              <CardHeader>
-                <CardTitle className="text-lg">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button
-                  className="w-full justify-start bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                  asChild
-                >
-                  <Link to="/upload-track">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Upload New Track
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start border-purple-500/30 hover:bg-purple-500/10"
-                  asChild
-                >
-                  <Link to="/find-musicians">
-                    <Search className="w-4 h-4 mr-2" />
-                    Find Musicians
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start border-blue-500/30 hover:bg-blue-500/10"
-                  asChild
-                >
-                  <Link to="/profile">
-                    <User className="w-4 h-4 mr-2" />
-                    Edit Profile
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start border-green-500/30 hover:bg-green-500/10"
-                  asChild
-                >
-                  <Link to={`/profile/${user?.username || "profile"}`}>
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Public Profile
-                  </Link>
-                </Button>
+              <CardContent className="p-4 text-center">
+                <Eye className="w-8 h-8 mx-auto mb-2 text-blue-400" />
+                <div className="text-2xl font-bold">{userStats.totalPlays}</div>
+                <div className="text-sm text-muted-foreground">Plays</div>
+              </CardContent>
+            </Card>
+            <Card className="border-green-500/20 bg-gradient-to-br from-card to-green-950/10">
+              <CardContent className="p-4 text-center">
+                <Heart className="w-8 h-8 mx-auto mb-2 text-green-400" />
+                <div className="text-2xl font-bold">{userStats.totalLikes}</div>
+                <div className="text-sm text-muted-foreground">Likes</div>
+              </CardContent>
+            </Card>
+            <Card className="border-orange-500/20 bg-gradient-to-br from-card to-orange-950/10">
+              <CardContent className="p-4 text-center">
+                <Users className="w-8 h-8 mx-auto mb-2 text-orange-400" />
+                <div className="text-2xl font-bold">
+                  {userStats.connectionsCount}
+                </div>
+                <div className="text-sm text-muted-foreground">Connections</div>
+              </CardContent>
+            </Card>
+            <Card className="border-pink-500/20 bg-gradient-to-br from-card to-pink-950/10">
+              <CardContent className="p-4 text-center">
+                <BarChart3 className="w-8 h-8 mx-auto mb-2 text-pink-400" />
+                <div className="text-2xl font-bold">
+                  {userStats.profileViews}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Profile Views
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-indigo-500/20 bg-gradient-to-br from-card to-indigo-950/10">
+              <CardContent className="p-4 text-center">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 text-indigo-400" />
+                <div className="text-2xl font-bold">
+                  {userStats.messagesCount}
+                </div>
+                <div className="text-sm text-muted-foreground">Messages</div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Middle Column - Recent Activity */}
-          <div className="space-y-6">
-            <Card className="border-purple-500/20">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Clock className="w-5 h-5 mr-2" />
-                  Recent Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {recentActivity.map((activity, index) => {
-                  const IconComponent = activity.icon;
-                  return (
-                    <div
-                      key={index}
-                      className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20"
-                    >
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
-                        <IconComponent className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium">{activity.message}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {activity.time}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {recentActivity.length === 0 && (
-                  <div className="text-center p-6">
-                    <Clock className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-muted-foreground">No recent activity</p>
-                    <p className="text-sm text-muted-foreground">
-                      Upload a track or connect with musicians to get started!
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Stats */}
-            <Card className="border-blue-500/20">
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <TrendingUp className="w-5 h-5 mr-2" />
-                  Your Stats
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-400">
-                      {userStats.tracksCount}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Tracks Shared
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-400">
-                      {userStats.connectionsCount}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Connections
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-400">
-                      {userStats.totalPlays}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Total Plays
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-400">
-                      {userStats.totalLikes}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Total Likes
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Additional Stats */}
-            <Card className="border-purple-500/20">
-              <CardHeader>
-                <CardTitle>This Month</CardTitle>
-              </CardHeader>
-              <CardContent>
+          {/* Quick Actions */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
                 <CardContent className="p-6">
@@ -449,65 +410,121 @@ const Dashboard = () => {
                 </CardContent>
               </Card>
             </div>
+          </div>
 
-          {/* Right Column - Recommended */}
-          <div className="space-y-6">
-            <Card className="border-purple-500/20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Recent Tracks */}
+            <Card className="border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
               <CardHeader>
-                <CardTitle>Recommended for You</CardTitle>
+                <CardTitle className="flex items-center">
+                  <Music className="w-5 h-5 mr-2" />
+                  Your Recent Tracks
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 rounded-lg border border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <Avatar>
-                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-600 text-white">
-                        AM
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">Alex M.</p>
-                      <p className="text-sm text-muted-foreground">
-                        Drummer • 4.9★
-                      </p>
-                    </div>
+              <CardContent>
+                {recentTracks.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentTracks.map((track) => (
+                      <div
+                        key={track.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePlayTrack(track)}
+                            className="w-8 h-8 p-0"
+                          >
+                            <Play className="w-3 h-3" />
+                          </Button>
+                          <div>
+                            <p className="font-medium text-sm">{track.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {formatDuration(track.duration)} •{" "}
+                              {formatDate(track.uploadDate)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                          <div className="flex items-center space-x-1">
+                            <Eye className="w-3 h-3" />
+                            <span>{track.plays || 0}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Heart className="w-3 h-3" />
+                            <span>{track.likes || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Looking for a guitarist for indie rock project...
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-purple-500/30"
-                  >
-                    Connect
-                  </Button>
-                </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Music className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No tracks yet</p>
+                    <Button size="sm" className="mt-2" asChild>
+                      <Link to="/upload-track">Upload your first track</Link>
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-                <div className="p-4 rounded-lg border border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10">
-                  <div className="flex items-center space-x-3 mb-3">
-                    <Avatar>
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                        SP
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">Sarah P.</p>
-                      <p className="text-sm text-muted-foreground">
-                        Vocalist • 4.7★
-                      </p>
-                    </div>
+            {/* Recent Activity */}
+            <Card className="border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2" />
+                  Community Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentActivity.length > 0 ? (
+                  <div className="space-y-3">
+                    {recentActivity.slice(0, 5).map((track) => (
+                      <div
+                        key={track.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePlayTrack(track)}
+                            className="w-8 h-8 p-0"
+                          >
+                            <Play className="w-3 h-3" />
+                          </Button>
+                          <div>
+                            <p className="font-medium text-sm">{track.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              by {track.artist} • {formatDate(track.uploadDate)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                          <div className="flex items-center space-x-1">
+                            <Eye className="w-3 h-3" />
+                            <span>{track.plays || 0}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Heart className="w-3 h-3" />
+                            <span>{track.likes || 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Jazz vocalist seeking instrumentalists...
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-blue-500/30"
-                  >
-                    Connect
-                  </Button>
-                </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <TrendingUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No recent activity</p>
+                    <Button size="sm" className="mt-2" asChild>
+                      <Link to="/discover">Explore the community</Link>
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
