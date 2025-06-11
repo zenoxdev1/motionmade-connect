@@ -28,6 +28,7 @@ import {
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useTrackActions } from "@/hooks/useTrackActions";
+import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import FullMusicPlayer from "./FullMusicPlayer";
 
 interface Track {
@@ -66,146 +67,36 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
 }) => {
   const { toast } = useToast();
   const { shareTrack, downloadTrack, likeTrack } = useTrackActions();
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const {
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    isMuted,
+    pauseTrack,
+    resumeTrack,
+    setVolume,
+    setMuted,
+    seekTo,
+    nextTrack,
+    previousTrack,
+  } = useMusicPlayer();
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
-  const [isMuted, setIsMuted] = useState(false);
   const [isShuffled, setIsShuffled] = useState(false);
   const [repeatMode, setRepeatMode] = useState<"none" | "one" | "all">("none");
   const [isLiked, setIsLiked] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [audioError, setAudioError] = useState(false);
   const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
 
-  // Load audio when track changes
+  // Check if current track has valid audio
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
-
-    setIsLoading(true);
-    setCurrentTime(0);
-    setIsPlaying(false);
-    setAudioError(false);
-
-    // Check if we have a valid audio URL
-    if (currentTrack.audioUrl && currentTrack.audioUrl.trim() !== "") {
-      console.log(
-        "Loading audio from URL:",
-        currentTrack.audioUrl.substring(0, 50) + "...",
-      );
-
-      // Validate base64 data URL
-      if (currentTrack.audioUrl.startsWith("data:audio/")) {
-        try {
-          audio.src = currentTrack.audioUrl;
-          audio.load();
-        } catch (error) {
-          console.error("Error setting audio source:", error);
-          setAudioError(true);
-          setIsLoading(false);
-          setDuration(currentTrack.duration);
-        }
-      } else {
-        console.warn("Invalid audio URL format for track:", currentTrack.title);
-        setAudioError(true);
-        setIsLoading(false);
-        setDuration(currentTrack.duration);
-      }
-    } else {
-      console.log("No audio URL available for track:", currentTrack.title);
-      setIsLoading(false);
-      setDuration(currentTrack.duration);
-      setAudioError(true);
-      return;
+    if (currentTrack) {
+      const hasValidAudio =
+        currentTrack.audioUrl &&
+        currentTrack.audioUrl.startsWith("data:audio/");
+      setAudioError(!hasValidAudio);
     }
-
-    const handleLoadedData = () => {
-      setDuration(audio.duration || currentTrack.duration);
-      setIsLoading(false);
-      setAudioError(false);
-      console.log("Audio loaded successfully, duration:", audio.duration);
-    };
-
-    const handleCanPlay = () => {
-      setIsLoading(false);
-      setAudioError(false);
-    };
-
-    const handleError = (e: any) => {
-      console.error("Audio loading error:", e);
-      setIsLoading(false);
-      setAudioError(true);
-      setDuration(currentTrack.duration);
-
-      toast({
-        title: "Audio loading failed",
-        description:
-          "Could not load audio file. The track may be corrupted or unsupported.",
-        variant: "destructive",
-      });
-    };
-
-    audio.addEventListener("loadeddata", handleLoadedData);
-    audio.addEventListener("canplay", handleCanPlay);
-    audio.addEventListener("error", handleError);
-
-    return () => {
-      audio.removeEventListener("loadeddata", handleLoadedData);
-      audio.removeEventListener("canplay", handleCanPlay);
-      audio.removeEventListener("error", handleError);
-    };
-  }, [currentTrack, toast]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const updateTime = () => {
-      if (!audioError && audio.src) {
-        setCurrentTime(audio.currentTime);
-      }
-    };
-
-    const handleEnded = () => {
-      setIsPlaying(false);
-
-      if (repeatMode === "one") {
-        // Restart the track
-        if (!audioError && audio.src) {
-          audio.currentTime = 0;
-          audio.play();
-          setIsPlaying(true);
-        }
-      } else if (repeatMode === "all" || playlist.length > 1) {
-        handleNext();
-      }
-    };
-
-    const handlePause = () => setIsPlaying(false);
-    const handlePlay = () => setIsPlaying(true);
-
-    audio.addEventListener("timeupdate", updateTime);
-    audio.addEventListener("ended", handleEnded);
-    audio.addEventListener("pause", handlePause);
-    audio.addEventListener("play", handlePlay);
-
-    return () => {
-      audio.removeEventListener("timeupdate", updateTime);
-      audio.removeEventListener("ended", handleEnded);
-      audio.removeEventListener("pause", handlePause);
-      audio.removeEventListener("play", handlePlay);
-    };
-  }, [repeatMode, playlist.length, audioError]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.volume = isMuted ? 0 : volume;
-    }
-  }, [volume, isMuted]);
+  }, [currentTrack]);
 
   const formatTime = (time: number) => {
     if (!time || isNaN(time)) return "0:00";
@@ -215,8 +106,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   };
 
   const handlePlayPause = async () => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
+    if (!currentTrack) return;
 
     if (audioError || !currentTrack.audioUrl) {
       toast({
@@ -229,13 +119,9 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
     try {
       if (isPlaying) {
-        audio.pause();
+        pauseTrack();
       } else {
-        // Ensure audio source is set
-        if (!audio.src && currentTrack.audioUrl) {
-          audio.src = currentTrack.audioUrl;
-        }
-        await audio.play();
+        await resumeTrack();
       }
     } catch (error) {
       console.error("Play/pause error:", error);
@@ -250,56 +136,25 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   };
 
   const handleSeek = (value: number[]) => {
-    const audio = audioRef.current;
     const newTime = (value[0] / 100) * duration;
-
-    if (audio && !audioError && audio.src) {
-      audio.currentTime = newTime;
-    }
-    setCurrentTime(newTime);
+    seekTo(newTime);
   };
 
   const handleVolumeChange = (value: number[]) => {
     setVolume(value[0] / 100);
-    setIsMuted(false);
+    setMuted(false);
   };
 
   const handleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
-  const getCurrentTrackIndex = () => {
-    return playlist.findIndex((track) => track.id === currentTrack?.id);
+    setMuted(!isMuted);
   };
 
   const handleNext = () => {
-    const currentIndex = getCurrentTrackIndex();
-    let nextIndex;
-
-    if (isShuffled) {
-      nextIndex = Math.floor(Math.random() * playlist.length);
-    } else {
-      nextIndex = (currentIndex + 1) % playlist.length;
-    }
-
-    if (playlist[nextIndex]) {
-      onTrackChange(playlist[nextIndex]);
-    }
+    nextTrack();
   };
 
   const handlePrevious = () => {
-    const currentIndex = getCurrentTrackIndex();
-    let prevIndex;
-
-    if (isShuffled) {
-      prevIndex = Math.floor(Math.random() * playlist.length);
-    } else {
-      prevIndex = currentIndex > 0 ? currentIndex - 1 : playlist.length - 1;
-    }
-
-    if (playlist[prevIndex]) {
-      onTrackChange(playlist[prevIndex]);
-    }
+    previousTrack();
   };
 
   const handleShare = () => {
@@ -319,6 +174,23 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       const newLikedState = !isLiked;
       setIsLiked(newLikedState);
       likeTrack(currentTrack.id, newLikedState);
+
+      // Broadcast like event for real-time updates
+      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      if (userData.id) {
+        const event = new CustomEvent("trackLiked", {
+          detail: {
+            track: currentTrack,
+            likedBy: {
+              id: userData.id,
+              name: userData.fullName,
+              avatar: userData.avatar,
+              username: userData.username,
+            },
+          },
+        });
+        window.dispatchEvent(event);
+      }
     }
   };
 
@@ -332,9 +204,6 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
   return (
     <>
-      {/* Audio element for actual playback */}
-      <audio ref={audioRef} preload="metadata" crossOrigin="anonymous" />
-
       {/* Compact Player UI */}
       <Card className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 bg-gradient-to-r from-card via-card to-purple-950/10 backdrop-blur-md rounded-none">
         <div className="px-4 py-3">
@@ -346,7 +215,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
               max={100}
               step={0.1}
               className="w-full"
-              disabled={isLoading || audioError}
+              disabled={audioError}
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>{formatTime(currentTime)}</span>
@@ -410,12 +279,10 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
                 <Button
                   onClick={handlePlayPause}
                   size="sm"
-                  disabled={isLoading || audioError}
+                  disabled={audioError}
                   className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50"
                 >
-                  {isLoading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : isPlaying ? (
+                  {isPlaying ? (
                     <Pause className="w-5 h-5" />
                   ) : (
                     <Play className="w-5 h-5" />
