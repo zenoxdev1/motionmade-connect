@@ -244,6 +244,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const updateProfile = async (data: Partial<User>): Promise<void> => {
+    setLoading(true);
+    try {
+      if (!user) {
+        throw new Error("No user logged in");
+      }
+
+      // Update user data
+      const updatedUser = { ...user, ...data };
+
+      // Save to localStorage
+      localStorage.setItem("userData", JSON.stringify(updatedUser));
+      setUser(updatedUser);
+
+      // Also update in allUsers array for profile discovery
+      const allUsers = JSON.parse(localStorage.getItem("allUsers") || "[]");
+      const userIndex = allUsers.findIndex((u: User) => u.id === user.id);
+      if (userIndex !== -1) {
+        allUsers[userIndex] = updatedUser;
+      } else {
+        allUsers.push(updatedUser);
+      }
+      localStorage.setItem("allUsers", JSON.stringify(allUsers));
+
+      console.log("✅ Profile updated successfully:", updatedUser);
+    } catch (error) {
+      console.error("❌ Profile update error:", error);
+      throw new Error("Failed to update profile. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const isAuthenticated = !!user;
 
   const value: AuthContextType = {
@@ -254,6 +287,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     signInWithGoogle,
     signInWithDiscord,
     signOut,
+    updateProfile,
     isAuthenticated,
   };
 
