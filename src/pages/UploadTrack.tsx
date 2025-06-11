@@ -49,6 +49,20 @@ interface TrackData {
 let globalAudioElement: HTMLAudioElement | null = null;
 let globalAudioFile: File | null = null;
 
+// Initialize global audio element
+const initializeGlobalAudio = () => {
+  if (!globalAudioElement) {
+    globalAudioElement = new Audio();
+    globalAudioElement.preload = "metadata";
+
+    // Add error handling
+    globalAudioElement.addEventListener("error", (e) => {
+      console.error("Global audio error:", e);
+    });
+  }
+  return globalAudioElement;
+};
+
 const UploadTrack = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -127,27 +141,39 @@ const UploadTrack = () => {
 
   // Initialize or maintain global audio element
   useEffect(() => {
-    if (!globalAudioElement) {
-      globalAudioElement = new Audio();
-      globalAudioElement.addEventListener("timeupdate", () => {
-        setCurrentTime(globalAudioElement?.currentTime || 0);
-      });
-      globalAudioElement.addEventListener("ended", () => {
-        setIsPlaying(false);
-      });
-      globalAudioElement.addEventListener("pause", () => {
-        setIsPlaying(false);
-      });
-      globalAudioElement.addEventListener("play", () => {
-        setIsPlaying(true);
-      });
-    }
+    const audio = initializeGlobalAudio();
+
+    const handleTimeUpdate = () => {
+      if (audio) {
+        setCurrentTime(audio.currentTime || 0);
+      }
+    };
+
+    const handleEnded = () => setIsPlaying(false);
+    const handlePause = () => setIsPlaying(false);
+    const handlePlay = () => setIsPlaying(true);
+    const handleError = (e: any) => {
+      console.error("Audio playback error:", e);
+      setIsPlaying(false);
+    };
+
+    // Add event listeners
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("error", handleError);
 
     // Sync playing state with global audio
-    setIsPlaying(!globalAudioElement.paused && globalAudioElement.src !== "");
+    setIsPlaying(!audio.paused && audio.src !== "");
 
     return () => {
-      // Don't destroy global audio on unmount to maintain persistence
+      // Clean up event listeners but don't destroy audio for persistence
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("error", handleError);
     };
   }, []);
 
