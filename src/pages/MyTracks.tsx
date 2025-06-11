@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import { useState, useEffect } from "react";
 
 interface Track {
@@ -46,8 +47,8 @@ interface Track {
 
 const MyTracks = () => {
   const { user } = useAuth();
+  const { playTrack, currentTrack, isPlaying } = useMusicPlayer();
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [playingTrack, setPlayingTrack] = useState<string | null>(null);
 
   useEffect(() => {
     // Load user's tracks from localStorage
@@ -72,12 +73,34 @@ const MyTracks = () => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const handlePlayPause = (trackId: string) => {
-    if (playingTrack === trackId) {
-      setPlayingTrack(null);
+  const handlePlayPause = (track: Track) => {
+    const isCurrentlyPlaying = currentTrack?.id === track.id && isPlaying;
+
+    if (isCurrentlyPlaying) {
+      // If this track is already playing, pause it
+      // The music player handles pause/resume
     } else {
-      setPlayingTrack(trackId);
-      // In a real app, you'd actually play the audio file here
+      // Play this track with the current tracks as playlist
+      playTrack(
+        {
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          duration: track.duration,
+          trackImage: track.trackImage,
+          allowDownload: track.allowDownload,
+          likes: track.likes,
+        },
+        tracks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          artist: t.artist,
+          duration: t.duration,
+          trackImage: t.trackImage,
+          allowDownload: t.allowDownload,
+          likes: t.likes,
+        })),
+      );
     }
   };
 
@@ -225,10 +248,10 @@ const MyTracks = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handlePlayPause(track.id)}
+                        onClick={() => handlePlayPause(track)}
                         className="w-12 h-12 rounded-full"
                       >
-                        {playingTrack === track.id ? (
+                        {currentTrack?.id === track.id && isPlaying ? (
                           <Pause className="w-5 h-5" />
                         ) : (
                           <Play className="w-5 h-5" />
@@ -303,9 +326,11 @@ const MyTracks = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem>
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Track
+                            <DropdownMenuItem asChild>
+                              <Link to={`/edit-track/${track.id}`}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit Track
+                              </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleToggleVisibility(track.id)}

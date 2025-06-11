@@ -34,9 +34,13 @@ interface TrackData {
   title: string;
   description: string;
   genre: string;
+  bpm: number;
+  musicalKey: string;
   tags: string;
+  collaborators: string;
   isPublic: boolean;
   allowDownload: boolean;
+  trackImage: string;
   file: File | null;
   duration: number;
 }
@@ -54,9 +58,13 @@ const UploadTrack = () => {
     title: "",
     description: "",
     genre: "",
+    bpm: 120,
+    musicalKey: "C",
     tags: "",
+    collaborators: "",
     isPublic: true,
     allowDownload: false,
+    trackImage: "",
     file: null,
     duration: 0,
   });
@@ -82,6 +90,35 @@ const UploadTrack = () => {
     "Dubstep",
     "Ambient",
     "Funk",
+    "Soul",
+    "Gospel",
+  ];
+
+  const musicalKeys = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+    "Cm",
+    "C#m",
+    "Dm",
+    "D#m",
+    "Em",
+    "Fm",
+    "F#m",
+    "Gm",
+    "G#m",
+    "Am",
+    "A#m",
+    "Bm",
   ];
 
   const handleInputChange = (
