@@ -157,6 +157,12 @@ const Dashboard = () => {
               </Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
+              <Link to={`/profile/${user?.username || "profile"}`}>
+                <Eye className="w-4 h-4 mr-2" />
+                Public Profile
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
               <Link to="/profile">
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
@@ -260,6 +266,16 @@ const Dashboard = () => {
                   <Link to="/profile">
                     <User className="w-4 h-4 mr-2" />
                     Edit Profile
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start border-green-500/30 hover:bg-green-500/10"
+                  asChild
+                >
+                  <Link to={`/profile/${user?.username || "profile"}`}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Public Profile
                   </Link>
                 </Button>
               </CardContent>
