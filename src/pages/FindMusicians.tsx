@@ -214,12 +214,21 @@ const FindMusicians = () => {
       musician.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       musician.bio?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesInstrument =
-      !selectedInstrument || musician.instrument === selectedInstrument;
-    const matchesGenre = !selectedGenre || musician.genre === selectedGenre;
+      !selectedInstrument ||
+      selectedInstrument === "all" ||
+      musician.instrument === selectedInstrument;
+    const matchesGenre =
+      !selectedGenre ||
+      selectedGenre === "all" ||
+      musician.genre?.toLowerCase() === selectedGenre;
     const matchesLocation =
-      !selectedLocation || musician.location === selectedLocation;
+      !selectedLocation ||
+      selectedLocation === "all" ||
+      musician.location === selectedLocation;
     const matchesLookingFor =
-      !selectedLookingFor || musician.lookingFor === selectedLookingFor;
+      !selectedLookingFor ||
+      selectedLookingFor === "all" ||
+      musician.lookingFor === selectedLookingFor;
 
     return (
       matchesSearch &&
@@ -251,10 +260,10 @@ const FindMusicians = () => {
 
   const clearAllFilters = () => {
     setSearchQuery("");
-    setSelectedInstrument("");
-    setSelectedGenre("");
-    setSelectedLocation("");
-    setSelectedLookingFor("");
+    setSelectedInstrument("all");
+    setSelectedGenre("all");
+    setSelectedLocation("all");
+    setSelectedLookingFor("all");
   };
 
   return (
@@ -326,7 +335,7 @@ const FindMusicians = () => {
                       <SelectValue placeholder="Any instrument" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any instrument</SelectItem>
+                      <SelectItem value="all">Any instrument</SelectItem>
                       {instruments.map((instrument) => (
                         <SelectItem
                           key={instrument.value}
@@ -349,7 +358,7 @@ const FindMusicians = () => {
                       <SelectValue placeholder="Any genre" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any genre</SelectItem>
+                      <SelectItem value="all">Any genre</SelectItem>
                       {genres.map((genre) => (
                         <SelectItem key={genre} value={genre.toLowerCase()}>
                           {genre}
@@ -369,7 +378,7 @@ const FindMusicians = () => {
                       <SelectValue placeholder="Any location" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any location</SelectItem>
+                      <SelectItem value="all">Any location</SelectItem>
                       {locations.map((location) => (
                         <SelectItem key={location} value={location}>
                           {location}
@@ -389,7 +398,7 @@ const FindMusicians = () => {
                       <SelectValue placeholder="Any type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Any type</SelectItem>
+                      <SelectItem value="all">Any type</SelectItem>
                       {lookingForOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -402,10 +411,10 @@ const FindMusicians = () => {
 
               {/* Active Filters */}
               {(searchQuery ||
-                selectedInstrument ||
-                selectedGenre ||
-                selectedLocation ||
-                selectedLookingFor) && (
+                (selectedInstrument && selectedInstrument !== "all") ||
+                (selectedGenre && selectedGenre !== "all") ||
+                (selectedLocation && selectedLocation !== "all") ||
+                (selectedLookingFor && selectedLookingFor !== "all")) && (
                 <div className="flex flex-wrap gap-2">
                   <span className="text-sm text-muted-foreground">
                     Active filters:
@@ -413,7 +422,7 @@ const FindMusicians = () => {
                   {searchQuery && (
                     <Badge variant="secondary">Search: "{searchQuery}"</Badge>
                   )}
-                  {selectedInstrument && (
+                  {selectedInstrument && selectedInstrument !== "all" && (
                     <Badge variant="secondary">
                       {
                         instruments.find((i) => i.value === selectedInstrument)
@@ -421,13 +430,13 @@ const FindMusicians = () => {
                       }
                     </Badge>
                   )}
-                  {selectedGenre && (
+                  {selectedGenre && selectedGenre !== "all" && (
                     <Badge variant="secondary">{selectedGenre}</Badge>
                   )}
-                  {selectedLocation && (
+                  {selectedLocation && selectedLocation !== "all" && (
                     <Badge variant="secondary">{selectedLocation}</Badge>
                   )}
-                  {selectedLookingFor && (
+                  {selectedLookingFor && selectedLookingFor !== "all" && (
                     <Badge variant="secondary">
                       {
                         lookingForOptions.find(
