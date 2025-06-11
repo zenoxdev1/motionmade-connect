@@ -94,11 +94,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       console.log("Sign up attempt:", { ...data, password: "***" });
 
+      // Generate username if not provided
+      const generateUsername = (fullName: string) => {
+        const base = fullName
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .substring(0, 15);
+        const suffix = Math.floor(Math.random() * 1000);
+        return `${base}${suffix}`;
+      };
+
       // Always use local storage for now to avoid network issues
       const mockUser: User = {
         id: "user_" + Date.now(),
         email: data.email,
         fullName: data.fullName,
+        username: data.username || generateUsername(data.fullName),
         instrument: data.instrument,
         provider: "email",
         createdAt: new Date().toISOString(),
