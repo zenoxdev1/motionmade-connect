@@ -30,7 +30,8 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // API endpoints
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 // Check if backend is available
 let BACKEND_AVAILABLE = false;
@@ -107,7 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       setUser(mockUser);
       console.log("✅ Sign up successful:", mockUser);
-
     } catch (error) {
       console.error("❌ Sign up error:", error);
       throw new Error("Sign up failed. Please try again.");
@@ -154,8 +154,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       // If no match found
-      throw new Error("Invalid email or password. Try demo credentials: demo@motionconnect.com / password123");
-
+      throw new Error(
+        "Invalid email or password. Try demo credentials: demo@motionconnect.com / password123",
+      );
     } catch (error) {
       console.error("❌ Sign in error:", error);
       throw error;
@@ -185,7 +186,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       setUser(googleUser);
 
       console.log("✅ Google sign in successful:", googleUser);
-
     } catch (error) {
       console.error("❌ Google sign in error:", error);
       throw new Error("Google sign in failed. Please try again.");
@@ -229,9 +229,6 @@ export const useAuth = () => {
   }
   return context;
 };
-
-
-}
 
 // Extend Window interface for Google OAuth
 declare global {
