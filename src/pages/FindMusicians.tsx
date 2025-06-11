@@ -38,6 +38,7 @@ import { useState, useEffect } from "react";
 interface Musician {
   id: string;
   name: string;
+  username?: string;
   avatar?: string;
   instrument: string;
   genre: string;
