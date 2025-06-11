@@ -23,6 +23,7 @@ import {
   MoreHorizontal,
   Maximize2,
   Music,
+  AlertCircle,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +69,9 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const [repeatMode, setRepeatMode] = useState<"none" | "one" | "all">("none");
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [audioError, setAudioError] = useState(false);
+  const [simulationInterval, setSimulationInterval] =
+    useState<NodeJS.Timeout | null>(null);
 
   // Load audio when track changes
   useEffect(() => {
@@ -77,39 +81,47 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     setIsLoading(true);
     setCurrentTime(0);
     setIsPlaying(false);
+    setAudioError(false);
 
-    // Use the track's audio URL if available
-    if (currentTrack.audioUrl) {
+    // Clear any existing simulation
+    if (simulationInterval) {
+      clearInterval(simulationInterval);
+      setSimulationInterval(null);
+    }
+
+    // Try to load real audio if available
+    if (currentTrack.audioUrl && currentTrack.audioUrl.trim() !== "") {
+      console.log("Loading audio from URL:", currentTrack.audioUrl);
       audio.src = currentTrack.audioUrl;
       audio.load();
     } else {
-      // For demo purposes, create a simple audio context tone
+      // No audio URL available, set up for demo mode
+      console.log("No audio URL available for track:", currentTrack.title);
       setIsLoading(false);
       setDuration(currentTrack.duration);
-      console.log(
-        "No audio URL found, using demo mode for:",
-        currentTrack.title,
-      );
+      setAudioError(true);
       return;
     }
 
     const handleLoadedData = () => {
       setDuration(audio.duration || currentTrack.duration);
       setIsLoading(false);
+      setAudioError(false);
+      console.log("Audio loaded successfully, duration:", audio.duration);
     };
 
     const handleCanPlay = () => {
       setIsLoading(false);
+      setAudioError(false);
     };
 
-    const handleError = () => {
+    const handleError = (e: any) => {
+      console.error("Audio loading error:", e);
       setIsLoading(false);
-      // For demo, just use duration from track metadata
+      setAudioError(true);
       setDuration(currentTrack.duration);
-      toast({
-        title: "Audio unavailable",
-        description: "Playing in demo mode with track metadata only.",
-      });
+
+      // Don't show error toast immediately, wait for user to try playing
     };
 
     audio.addEventListener("loadeddata", handleLoadedData);
@@ -121,20 +133,34 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("error", handleError);
     };
-  }, [currentTrack, toast]);
+  }, [currentTrack, toast, simulationInterval]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateTime = () => {
+      if (!audioError) {
+        setCurrentTime(audio.currentTime);
+      }
+    };
 
     const handleEnded = () => {
       setIsPlaying(false);
+      if (simulationInterval) {
+        clearInterval(simulationInterval);
+        setSimulationInterval(null);
+      }
+
       if (repeatMode === "one") {
-        audio.currentTime = 0;
-        audio.play();
-        setIsPlaying(true);
+        // Restart the track
+        if (!audioError && audio.src) {
+          audio.currentTime = 0;
+          audio.play();
+          setIsPlaying(true);
+        } else {
+          startSimulation();
+        }
       } else if (repeatMode === "all" || playlist.length > 1) {
         handleNext();
       }
@@ -154,7 +180,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("play", handlePlay);
     };
-  }, [repeatMode, playlist.length]);
+  }, [repeatMode, playlist.length, audioError, simulationInterval]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -162,6 +188,38 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       audio.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
+
+  const startSimulation = () => {
+    if (simulationInterval) {
+      clearInterval(simulationInterval);
+    }
+
+    setCurrentTime(0);
+    setIsPlaying(true);
+
+    const interval = setInterval(() => {
+      setCurrentTime((prev) => {
+        const newTime = prev + 1;
+        if (newTime >= duration) {
+          clearInterval(interval);
+          setSimulationInterval(null);
+          setIsPlaying(false);
+          return 0;
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    setSimulationInterval(interval);
+  };
+
+  const stopSimulation = () => {
+    if (simulationInterval) {
+      clearInterval(simulationInterval);
+      setSimulationInterval(null);
+    }
+    setIsPlaying(false);
+  };
 
   const formatTime = (time: number) => {
     if (!time || isNaN(time)) return "0:00";
@@ -176,64 +234,64 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
     try {
       if (isPlaying) {
-        audio.pause();
-        // Clear any simulation intervals
-        if ((audio as any).simulationInterval) {
-          clearInterval((audio as any).simulationInterval);
-          (audio as any).simulationInterval = null;
+        if (audioError || !audio.src) {
+          // Stop simulation
+          stopSimulation();
+        } else {
+          // Pause real audio
+          audio.pause();
         }
       } else {
-        if (currentTrack.audioUrl && audio.src) {
-          // Try to play real audio
-          await audio.play();
-        } else {
-          // Simulate playback for demo
-          console.log(
-            "No audio URL, simulating playback for:",
-            currentTrack.title,
-          );
-          setIsPlaying(true);
-
-          // Simulate track progress
-          const simulateProgress = () => {
-            setCurrentTime((prev) => {
-              const newTime = prev + 1;
-              if (newTime >= duration) {
-                setIsPlaying(false);
-                if ((audio as any).simulationInterval) {
-                  clearInterval((audio as any).simulationInterval);
-                  (audio as any).simulationInterval = null;
-                }
-                return 0;
-              }
-              return newTime;
+        if (audioError || !audio.src) {
+          // Show error message first time, then start simulation
+          if (!simulationInterval) {
+            toast({
+              title: "Audio unavailable",
+              description: "Playing in demo mode with track metadata only.",
+              variant: "destructive",
             });
-          };
-
-          const interval = setInterval(simulateProgress, 1000);
-          (audio as any).simulationInterval = interval;
+          }
+          startSimulation();
+        } else {
+          // Try to play real audio
+          try {
+            await audio.play();
+          } catch (playError) {
+            console.error("Playback failed, starting simulation:", playError);
+            setAudioError(true);
+            toast({
+              title: "Audio playback failed",
+              description: "Playing in demo mode with track metadata only.",
+              variant: "destructive",
+            });
+            startSimulation();
+          }
         }
       }
     } catch (error) {
-      console.error("Audio playback error:", error);
+      console.error("Play/pause error:", error);
       toast({
         title: "Playback Error",
-        description: "Unable to play this track. This might be a demo track.",
+        description: "Unable to play this track. Using demo mode.",
         variant: "destructive",
       });
 
-      // Fallback to simulation
-      setIsPlaying(!isPlaying);
+      if (isPlaying) {
+        stopSimulation();
+      } else {
+        startSimulation();
+      }
     }
   };
 
   const handleSeek = (value: number[]) => {
     const audio = audioRef.current;
-    if (audio && duration > 0) {
-      const newTime = (value[0] / 100) * duration;
+    const newTime = (value[0] / 100) * duration;
+
+    if (audio && !audioError && audio.src) {
       audio.currentTime = newTime;
-      setCurrentTime(newTime);
     }
+    setCurrentTime(newTime);
   };
 
   const handleVolumeChange = (value: number[]) => {
@@ -260,6 +318,11 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     }
 
     if (playlist[nextIndex]) {
+      // Stop current simulation
+      if (simulationInterval) {
+        clearInterval(simulationInterval);
+        setSimulationInterval(null);
+      }
       onTrackChange(playlist[nextIndex]);
     }
   };
@@ -275,6 +338,11 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     }
 
     if (playlist[prevIndex]) {
+      // Stop current simulation
+      if (simulationInterval) {
+        clearInterval(simulationInterval);
+        setSimulationInterval(null);
+      }
       onTrackChange(playlist[prevIndex]);
     }
   };
@@ -340,9 +408,20 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">
-                <h4 className="font-medium truncate">{currentTrack.title}</h4>
+                <h4 className="font-medium truncate flex items-center">
+                  {currentTrack.title}
+                  {audioError && (
+                    <AlertCircle
+                      className="w-4 h-4 ml-2 text-yellow-500"
+                      title="Audio unavailable - demo mode"
+                    />
+                  )}
+                </h4>
                 <p className="text-sm text-muted-foreground truncate">
                   {currentTrack.artist}
+                  {audioError && (
+                    <span className="text-yellow-500 ml-2">(Demo Mode)</span>
+                  )}
                 </p>
               </div>
             </div>
