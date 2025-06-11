@@ -10,6 +10,10 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import UploadTrack from "./pages/UploadTrack";
+import FindMusicians from "./pages/FindMusicians";
+import MyTracks from "./pages/MyTracks";
 import Features from "./pages/Features";
 import Community from "./pages/Community";
 import Pricing from "./pages/Pricing";
@@ -55,6 +59,38 @@ const App = () => (
               element={
                 <ProtectedRoute requireAuth={true}>
                   <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/upload-track"
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <UploadTrack />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/find-musicians"
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <FindMusicians />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-tracks"
+              element={
+                <ProtectedRoute requireAuth={true}>
+                  <MyTracks />
                 </ProtectedRoute>
               }
             />

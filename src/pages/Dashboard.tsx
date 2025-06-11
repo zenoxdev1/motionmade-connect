@@ -150,9 +150,17 @@ const Dashboard = () => {
           </Link>
 
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm">
-              <Settings className="w-4 h-4 mr-2" />
-              Settings
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/my-tracks">
+                <Music className="w-4 h-4 mr-2" />
+                My Tracks
+              </Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/profile">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Link>
             </Button>
             <Button variant="ghost" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
