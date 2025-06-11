@@ -490,7 +490,6 @@ const UploadTrack = () => {
       if (storageStats.usagePercentage > 90) {
         console.warn("Storage nearly full, will use streaming mode");
       }
-        );
       }
 
       const trackId = Date.now().toString();
