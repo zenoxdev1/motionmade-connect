@@ -1,58 +1,92 @@
 /**
- * Audio Fix Helper - Utilities to diagnose and fix audio playback issues
+ * Audio Fix Helper - Enhanced utilities to diagnose and fix audio playback issues
+ * Now supports base64 data URLs and better validation
  */
 
 export const diagnoseTrackAudio = (trackId: string) => {
-  console.log("🔍 Diagnosing audio for track:", trackId);
+  console.log("🔍 Diagnosing track audio:", trackId);
 
   const userData = JSON.parse(localStorage.getItem("userData") || "{}");
   if (!userData.id) {
-    console.log("❌ No user logged in");
-    return null;
+    console.error("❌ No user logged in");
+    return;
   }
 
-  // Find the track
   const userTracks = JSON.parse(
     localStorage.getItem(`tracks_${userData.id}`) || "[]",
   );
   const track = userTracks.find((t: any) => t.id === trackId);
 
   if (!track) {
-    console.log("❌ Track not found");
-    return null;
+    console.error("❌ Track not found");
+    return;
   }
 
-  console.log("📁 Track found:", track.title);
-  console.log("🎵 Audio URL:", track.audioUrl ? "✅ Present" : "❌ Missing");
-  console.log("📏 File size:", track.fileSize || "Unknown");
-  console.log("⏱️ Duration:", track.duration || "Unknown");
+  const audioInfo = {
+    hasAudioUrl: !!track.audioUrl,
+    audioUrlType: track.audioUrl?.startsWith("data:audio/")
+      ? "Base64 Data URL"
+      : track.audioUrl?.startsWith("blob:")
+        ? "Blob URL"
+        : track.audioUrl
+          ? "Regular URL"
+          : "None",
+    audioUrlLength: track.audioUrl?.length || 0,
+    isValidBase64:
+      track.audioUrl?.startsWith("data:audio/") && track.audioUrl.includes(","),
+    estimatedSizeMB: track.audioUrl
+      ? ((track.audioUrl.length * 0.75) / 1024 / 1024).toFixed(2)
+      : "0",
+  };
 
+  console.log("📝 Track details:", {
+    id: track.id,
+    title: track.title,
+    fileName: track.fileName,
+    fileSize: track.fileSize,
+    audioUrl: audioInfo.hasAudioUrl ? "✅ Present" : "❌ Missing",
+    audioUrlType: audioInfo.audioUrlType,
+    audioUrlLength: audioInfo.audioUrlLength,
+    estimatedSizeMB: audioInfo.estimatedSizeMB + " MB",
+    isValidBase64: audioInfo.isValidBase64,
+    uploadDate: track.uploadDate,
+  });
+
+  // Test if audio URL is accessible
   if (track.audioUrl) {
-    console.log(
-      "🔗 Audio URL type:",
-      track.audioUrl.startsWith("data:")
-        ? "Base64 Data URL"
-        : track.audioUrl.startsWith("blob:")
-          ? "Blob URL (temporary)"
-          : "Other",
-    );
+    const audio = new Audio();
+    const testTimeout = setTimeout(() => {
+      console.warn("⚠️ Audio loading taking too long (>5s)");
+    }, 5000);
 
-    // Test if URL is accessible
+    audio.addEventListener("loadeddata", () => {
+      clearTimeout(testTimeout);
+      console.log("✅ Audio loads successfully");
+      console.log("Duration:", audio.duration, "seconds");
+      console.log("Ready state:", audio.readyState);
+    });
+
+    audio.addEventListener("canplay", () => {
+      console.log("✅ Audio can play");
+    });
+
+    audio.addEventListener("error", (e) => {
+      clearTimeout(testTimeout);
+      console.error("❌ Audio loading failed:", e);
+      console.error("Error code:", audio.error?.code);
+      console.error("Error message:", audio.error?.message);
+    });
+
     try {
-      const audio = new Audio();
-      audio.addEventListener("loadeddata", () => {
-        console.log("✅ Audio URL is accessible");
-      });
-      audio.addEventListener("error", (e) => {
-        console.log("❌ Audio URL failed to load:", e);
-      });
       audio.src = track.audioUrl;
+      audio.load();
     } catch (error) {
-      console.log("❌ Error testing audio URL:", error);
+      clearTimeout(testTimeout);
+      console.error("❌ Failed to set audio source:", error);
     }
   }
 
-  return track;
+  return { track, audioInfo };
 };
 
 export const fixTrackAudio = async (trackId: string, newAudioFile?: File) => {
@@ -60,7 +94,7 @@ export const fixTrackAudio = async (trackId: string, newAudioFile?: File) => {
 
   const userData = JSON.parse(localStorage.getItem("userData") || "{}");
   if (!userData.id) {
-    console.log("❌ No user logged in");
+    console.error("❌ No user logged in");
     return false;
   }
 
@@ -70,7 +104,7 @@ export const fixTrackAudio = async (trackId: string, newAudioFile?: File) => {
   const trackIndex = userTracks.findIndex((t: any) => t.id === trackId);
 
   if (trackIndex === -1) {
-    console.log("❌ Track not found");
+    console.error("❌ Track not found");
     return false;
   }
 
@@ -81,9 +115,30 @@ export const fixTrackAudio = async (trackId: string, newAudioFile?: File) => {
       // User provided a new audio file
       console.log("📁 Processing new audio file...");
 
+      // Validate file
+      const allowedTypes = [
+        "audio/mp3",
+        "audio/mpeg",
+        "audio/wav",
+        "audio/ogg",
+        "audio/aac",
+      ];
+      if (!allowedTypes.includes(newAudioFile.type)) {
+        console.error("❌ Invalid file type:", newAudioFile.type);
+        return false;
+      }
+
+      // Convert to base64
       const audioUrl = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = () => {
+          const result = reader.result as string;
+          if (result.startsWith("data:audio/")) {
+            resolve(result);
+          } else {
+            reject(new Error("Invalid audio data format"));
+          }
+        };
         reader.onerror = () => reject(new Error("Failed to read file"));
         reader.readAsDataURL(newAudioFile);
       });
@@ -93,34 +148,12 @@ export const fixTrackAudio = async (trackId: string, newAudioFile?: File) => {
       track.fileSize = newAudioFile.size;
       track.fileName = newAudioFile.name;
 
-      console.log("✅ New audio file processed");
+      console.log("✅ New audio file processed and converted to base64");
     } else {
-      // Try to generate a demo audio URL
-      console.log("🔄 Generating demo audio...");
-
-      // Create a simple demo audio URL (sine wave)
-      const audioContext = new (window.AudioContext ||
-        (window as any).webkitAudioContext)();
-      const duration = track.duration || 180;
-      const sampleRate = audioContext.sampleRate;
-      const buffer = audioContext.createBuffer(
-        1,
-        duration * sampleRate,
-        sampleRate,
+      console.warn(
+        "⚠️ No new audio file provided - track will remain without audio",
       );
-
-      const data = buffer.getChannelData(0);
-      const frequency = 440; // A note
-
-      for (let i = 0; i < data.length; i++) {
-        data[i] = Math.sin((2 * Math.PI * frequency * i) / sampleRate) * 0.1;
-      }
-
-      // Convert to WAV blob
-      const wavBlob = audioBufferToWavBlob(buffer);
-      track.audioUrl = URL.createObjectURL(wavBlob);
-
-      console.log("✅ Demo audio generated");
+      return false;
     }
 
     // Save updated track
@@ -140,67 +173,17 @@ export const fixTrackAudio = async (trackId: string, newAudioFile?: File) => {
     console.log("✅ Track audio fixed and saved");
     return true;
   } catch (error) {
-    console.log("❌ Failed to fix track audio:", error);
+    console.error("❌ Failed to fix track audio:", error);
     return false;
   }
 };
 
-const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
-  const numberOfChannels = buffer.numberOfChannels;
-  const length = buffer.length;
-  const sampleRate = buffer.sampleRate;
-  const bytesPerSample = 2;
-  const blockAlign = numberOfChannels * bytesPerSample;
-  const byteRate = sampleRate * blockAlign;
-  const dataSize = length * blockAlign;
-  const bufferSize = 44 + dataSize;
-
-  const arrayBuffer = new ArrayBuffer(bufferSize);
-  const view = new DataView(arrayBuffer);
-
-  const writeString = (offset: number, string: string) => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-
-  // WAV header
-  writeString(0, "RIFF");
-  view.setUint32(4, bufferSize - 8, true);
-  writeString(8, "WAVE");
-  writeString(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, numberOfChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, 16, true);
-  writeString(36, "data");
-  view.setUint32(40, dataSize, true);
-
-  // Convert audio data
-  let offset = 44;
-  for (let i = 0; i < length; i++) {
-    for (let channel = 0; channel < numberOfChannels; channel++) {
-      const sample = Math.max(
-        -1,
-        Math.min(1, buffer.getChannelData(channel)[i]),
-      );
-      view.setInt16(offset, sample * 0x7fff, true);
-      offset += 2;
-    }
-  }
-
-  return new Blob([arrayBuffer], { type: "audio/wav" });
-};
-
 export const fixAllUserTracks = async () => {
-  console.log("🔧 Fixing all user tracks without audio...");
+  console.log("🔧 Checking all user tracks for audio issues...");
 
   const userData = JSON.parse(localStorage.getItem("userData") || "{}");
   if (!userData.id) {
-    console.log("❌ No user logged in");
+    console.error("❌ No user logged in");
     return 0;
   }
 
@@ -208,20 +191,91 @@ export const fixAllUserTracks = async () => {
     localStorage.getItem(`tracks_${userData.id}`) || "[]",
   );
 
-  let fixedCount = 0;
+  console.log(`Found ${userTracks.length} tracks to check`);
 
-  for (const track of userTracks) {
-    if (!track.audioUrl || track.audioUrl.trim() === "") {
-      console.log(`🔧 Fixing track: ${track.title}`);
-      const success = await fixTrackAudio(track.id);
-      if (success) {
-        fixedCount++;
-      }
-    }
+  userTracks.forEach((track: any, index: number) => {
+    console.log(`\n--- Track ${index + 1}: ${track.title} ---`);
+    diagnoseTrackAudio(track.id);
+  });
+
+  console.log("✅ Finished checking all tracks");
+  console.log(
+    "💡 To fix a specific track, use: fixTrackAudio('trackId', audioFile)",
+  );
+
+  return userTracks.length;
+};
+
+export const checkAllTracksAudio = () => {
+  console.log("🔍 Checking audio status for all tracks...");
+
+  const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+  if (!userData.id) {
+    console.error("❌ No user logged in");
+    return;
   }
 
-  console.log(`✅ Fixed ${fixedCount} tracks`);
-  return fixedCount;
+  const userTracks = JSON.parse(
+    localStorage.getItem(`tracks_${userData.id}`) || "[]",
+  );
+
+  const results = {
+    total: userTracks.length,
+    withAudio: 0,
+    withoutAudio: 0,
+    withValidBase64: 0,
+    withInvalidAudio: 0,
+    tracks: [] as any[],
+  };
+
+  userTracks.forEach((track: any) => {
+    const hasAudio = !!track.audioUrl;
+    const isValidBase64 =
+      track.audioUrl?.startsWith("data:audio/") && track.audioUrl.includes(",");
+
+    if (hasAudio) {
+      results.withAudio++;
+      if (isValidBase64) {
+        results.withValidBase64++;
+      } else {
+        results.withInvalidAudio++;
+      }
+    } else {
+      results.withoutAudio++;
+    }
+
+    results.tracks.push({
+      id: track.id,
+      title: track.title,
+      hasAudio,
+      audioType: track.audioUrl?.startsWith("data:audio/")
+        ? "Base64"
+        : track.audioUrl?.startsWith("blob:")
+          ? "Blob"
+          : track.audioUrl
+            ? "URL"
+            : "None",
+      isValid: isValidBase64,
+      fileSize: track.fileSize,
+      uploadDate: track.uploadDate,
+    });
+  });
+
+  console.log("📊 Audio Check Results:", results);
+
+  console.log("\n📋 Track Summary:");
+  results.tracks.forEach((track, index) => {
+    const status = track.hasAudio
+      ? track.isValid
+        ? "✅ Valid Audio"
+        : "⚠️ Invalid Audio"
+      : "❌ No Audio";
+    console.log(
+      `${index + 1}. ${track.title} - ${status} (${track.audioType})`,
+    );
+  });
+
+  return results;
 };
 
 export const listTracksWithoutAudio = () => {
@@ -229,7 +283,7 @@ export const listTracksWithoutAudio = () => {
 
   const userData = JSON.parse(localStorage.getItem("userData") || "{}");
   if (!userData.id) {
-    console.log("❌ No user logged in");
+    console.error("❌ No user logged in");
     return [];
   }
 
@@ -249,13 +303,84 @@ export const listTracksWithoutAudio = () => {
   return tracksWithoutAudio;
 };
 
+export const validateBase64Audio = (dataUrl: string): boolean => {
+  if (!dataUrl || typeof dataUrl !== "string") return false;
+  if (!dataUrl.startsWith("data:audio/")) return false;
+
+  const parts = dataUrl.split(",");
+  if (parts.length !== 2) return false;
+
+  try {
+    // Try to decode base64
+    atob(parts[1].substring(0, 100)); // Test first 100 chars
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+export const getStorageUsage = () => {
+  try {
+    const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+    if (!userData.id) {
+      console.error("❌ No user logged in");
+      return;
+    }
+
+    const userTracks = JSON.parse(
+      localStorage.getItem(`tracks_${userData.id}`) || "[]",
+    );
+
+    let totalAudioSize = 0;
+    let totalMetadataSize = 0;
+
+    userTracks.forEach((track: any) => {
+      if (track.audioUrl) {
+        totalAudioSize += track.audioUrl.length;
+      }
+
+      const trackWithoutAudio = { ...track };
+      delete trackWithoutAudio.audioUrl;
+      totalMetadataSize += JSON.stringify(trackWithoutAudio).length;
+    });
+
+    const totalSize = totalAudioSize + totalMetadataSize;
+    const maxStorage = 5 * 1024 * 1024; // 5MB typical localStorage limit
+
+    console.log("💾 Storage Usage:");
+    console.log(`Audio data: ${(totalAudioSize / 1024 / 1024).toFixed(2)} MB`);
+    console.log(`Metadata: ${(totalMetadataSize / 1024).toFixed(2)} KB`);
+    console.log(`Total: ${(totalSize / 1024 / 1024).toFixed(2)} MB`);
+    console.log(
+      `Usage: ${((totalSize / maxStorage) * 100).toFixed(1)}% of estimated 5MB limit`,
+    );
+
+    return {
+      audioSizeMB: totalAudioSize / 1024 / 1024,
+      metadataSizeKB: totalMetadataSize / 1024,
+      totalSizeMB: totalSize / 1024 / 1024,
+      usagePercent: (totalSize / maxStorage) * 100,
+    };
+  } catch (error) {
+    console.error("❌ Error calculating storage usage:", error);
+  }
+};
+
 // Make available in browser console
 if (typeof window !== "undefined") {
   (window as any).audioFixer = {
     diagnoseTrackAudio,
     fixTrackAudio,
     fixAllUserTracks,
+    checkAllTracksAudio,
     listTracksWithoutAudio,
+    validateBase64Audio,
+    getStorageUsage,
   };
-  console.log("🔧 Audio fixer available: window.audioFixer");
+  console.log("🔧 Enhanced audio fixer available: window.audioFixer");
+  console.log("📚 Available methods:");
+  console.log("  - diagnoseTrackAudio(trackId)");
+  console.log("  - fixTrackAudio(trackId, audioFile)");
+  console.log("  - checkAllTracksAudio()");
+  console.log("  - getStorageUsage()");
 }
