@@ -198,22 +198,40 @@ const MyTracks = () => {
       track.id === trackId ? { ...track, isPublic: !track.isPublic } : track,
     );
     setTracks(updatedTracks);
-    localStorage.setItem(`tracks_${user?.id}`, JSON.stringify(updatedTracks));
+
+    // Update localStorage (metadata only, safe from quota issues)
+    try {
+      localStorage.setItem(`tracks_${user?.id}`, JSON.stringify(updatedTracks));
+    } catch (error) {
+      console.error("Failed to update track visibility:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update track visibility.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Update global tracks if made public
-    const allTracks = JSON.parse(localStorage.getItem("allTracks") || "[]");
     const track = updatedTracks.find((t) => t.id === trackId);
 
-    if (track?.isPublic) {
-      // Add to global tracks if not already there
-      if (!allTracks.find((t: Track) => t.id === trackId)) {
-        allTracks.push(track);
-        localStorage.setItem("allTracks", JSON.stringify(allTracks));
+    try {
+      const allTracks = JSON.parse(localStorage.getItem("allTracks") || "[]");
+
+      if (track?.isPublic) {
+        // Add to global tracks if not already there
+        if (!allTracks.find((t: Track) => t.id === trackId)) {
+          allTracks.push(track);
+          localStorage.setItem("allTracks", JSON.stringify(allTracks));
+        }
+      } else {
+        // Remove from global tracks
+        const filteredTracks = allTracks.filter((t: Track) => t.id !== trackId);
+        localStorage.setItem("allTracks", JSON.stringify(filteredTracks));
       }
-    } else {
-      // Remove from global tracks
-      const filteredTracks = allTracks.filter((t: Track) => t.id !== trackId);
-      localStorage.setItem("allTracks", JSON.stringify(filteredTracks));
+    } catch (error) {
+      console.warn("Failed to update global tracks:", error);
+      // Non-critical error, track visibility still updated locally
     }
 
     toast({

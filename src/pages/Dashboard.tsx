@@ -5,6 +5,11 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import {
+  checkMigrationNeeded,
+  migrateUserTracks,
+  getMigrationStats,
+} from "@/utils/audioMigration";
+import {
   Music,
   Users,
   Play,
@@ -52,8 +57,40 @@ const Dashboard = () => {
       loadUserStats();
       loadRecentTracks();
       loadRecentActivity();
+      checkAndMigrate();
     }
   }, [user]);
+
+  const checkAndMigrate = async () => {
+    if (!user) return;
+
+    if (checkMigrationNeeded(user.id)) {
+      const stats = getMigrationStats(user.id);
+
+      if (stats.estimatedSize > 10 * 1024 * 1024) {
+        // > 10MB
+        toast({
+          title: "Optimizing your music library...",
+          description:
+            "We're improving storage efficiency. This may take a moment.",
+        });
+
+        try {
+          const result = await migrateUserTracks(user.id);
+
+          if (result.migrated > 0) {
+            toast({
+              title: "Library optimized! ✨",
+              description: `${result.migrated} tracks optimized for better performance.`,
+            });
+          }
+        } catch (error) {
+          console.error("Migration failed:", error);
+          // Silent fail - user experience isn't affected
+        }
+      }
+    }
+  };
 
   const loadUserStats = () => {
     if (!user) return;
