@@ -376,38 +376,79 @@ const Dashboard = () => {
                 <CardTitle>This Month</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-2">
-                      <Eye className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm">Profile Views</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-6">
+                  <Link to="/upload-track" className="block">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Upload className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Upload Track</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Share your music
+                        </p>
+                      </div>
                     </div>
-                    <span className="font-semibold">
-                      {userStats.profileViews}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-2">
-                      <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm">Messages</span>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-6">
+                  <Link to="/discover" className="block">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Compass className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Discover</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Find new music & artists
+                        </p>
+                      </div>
                     </div>
-                    <span className="font-semibold">
-                      {userStats.messagesCount}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-2">
-                      <Star className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm">New Likes</span>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-6">
+                  <Link to="/find-musicians" className="block">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Users className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">Find Musicians</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Connect with talent
+                        </p>
+                      </div>
                     </div>
-                    <span className="font-semibold">
-                      +{Math.floor(userStats.totalLikes * 0.3)}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-6">
+                  <Link to="/my-tracks" className="block">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Music className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">My Tracks</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Manage your music
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
 
           {/* Right Column - Recommended */}
           <div className="space-y-6">
