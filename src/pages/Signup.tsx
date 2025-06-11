@@ -322,10 +322,7 @@ const Signup = () => {
                           key={instrument.value}
                           value={instrument.value}
                         >
-                          <div className="flex items-center">
-                            <instrument.icon className="w-4 h-4 mr-2" />
-                            {instrument.label}
-                          </div>
+                          {instrument.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
