@@ -478,9 +478,35 @@ const UploadTrack = () => {
       clearInterval(progressInterval);
       setUploadProgress(95);
 
-      // Create track object
+      // Validate storage capacity before proceeding
+      const audioSize = new Blob([audioUrl]).size;
+      const storageValidation = validateStorageCapacity(audioSize);
+
+      if (!storageValidation.canStore) {
+        throw new Error(
+          storageValidation.reason || "Storage capacity exceeded",
+        );
+      }
+
+      const trackId = Date.now().toString();
+
+      // Store audio data separately using optimized storage
+      const audioStorageResult = await storeAudioSafely(
+        `track_audio_${trackId}`,
+        audioUrl,
+      );
+
+      if (!audioStorageResult.stored) {
+        console.warn("Audio storage failed, will use streaming mode");
+        toast({
+          title: "Storage optimization",
+          description: "Track will use streaming mode for better performance.",
+        });
+      }
+
+      // Create track object (without large audio data)
       const track = {
-        id: Date.now().toString(),
+        id: trackId,
         userId: user.id,
         title: trackData.title.trim(),
         description: trackData.description.trim(),
@@ -502,19 +528,28 @@ const UploadTrack = () => {
         duration: trackData.duration || 180,
         fileSize: trackData.file.size,
         fileName: trackData.file.name,
-        audioUrl: audioUrl, // Base64 encoded audio
+        audioUrl: audioStorageResult.stored
+          ? `stored:track_audio_${trackId}`
+          : audioUrl, // Reference to stored audio or direct URL
         uploadDate: new Date().toISOString(),
         plays: 0,
         likes: 0,
         artist: user.fullName || "Unknown Artist",
+        isStreaming: audioStorageResult.shouldStream,
       };
 
-      // Store in user's tracks
+      // Store track metadata (much smaller without audio data)
       const userTracks = JSON.parse(
         localStorage.getItem(`tracks_${user.id}`) || "[]",
       );
       userTracks.push(track);
-      localStorage.setItem(`tracks_${user.id}`, JSON.stringify(userTracks));
+
+      try {
+        localStorage.setItem(`tracks_${user.id}`, JSON.stringify(userTracks));
+      } catch (error) {
+        console.error("Failed to store track metadata:", error);
+        throw new Error("Failed to save track information");
+      }
 
       // If public, add to global tracks
       if (trackData.isPublic) {

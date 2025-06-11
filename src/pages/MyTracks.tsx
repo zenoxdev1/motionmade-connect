@@ -225,20 +225,45 @@ const MyTracks = () => {
   };
 
   const handleDeleteTrack = (trackId: string) => {
-    const trackToDelete = tracks.find((t) => t.id === trackId);
+    const trackToRemove = tracks.find((t) => t.id === trackId);
     const updatedTracks = tracks.filter((track) => track.id !== trackId);
     setTracks(updatedTracks);
-    localStorage.setItem(`tracks_${user?.id}`, JSON.stringify(updatedTracks));
 
-    // Remove from global tracks as well
-    const allTracks = JSON.parse(localStorage.getItem("allTracks") || "[]");
-    const filteredTracks = allTracks.filter((t: Track) => t.id !== trackId);
-    localStorage.setItem("allTracks", JSON.stringify(filteredTracks));
+    // Clean up stored audio data if it exists
+    if (trackToRemove?.audioUrl?.startsWith("stored:")) {
+      const storageKey = trackToRemove.audioUrl.replace("stored:", "");
+      removeAudioSafely(storageKey);
+    }
+
+    // Update localStorage (metadata only, safe)
+    try {
+      localStorage.setItem(`tracks_${user?.id}`, JSON.stringify(updatedTracks));
+    } catch (error) {
+      console.error("Failed to update tracks:", error);
+      toast({
+        title: "Warning",
+        description: "Track deleted but metadata update failed.",
+        variant: "destructive",
+      });
+    }
+
+    // Remove from global tracks if it was public
+    const globalTracks = JSON.parse(localStorage.getItem("allTracks") || "[]");
+    const updatedGlobalTracks = globalTracks.filter(
+      (track: any) => track.id !== trackId,
+    );
+    try {
+      localStorage.setItem("allTracks", JSON.stringify(updatedGlobalTracks));
+    } catch (error) {
+      console.warn("Failed to update global tracks:", error);
+    }
 
     toast({
       title: "Track deleted",
-      description: `"${trackToDelete?.title}" has been removed from your library.`,
+      description: "Your track and its audio data have been removed.",
     });
+
+    setTrackToDelete(null);
   };
 
   const getTrackTypeIcon = (trackType?: string) => {

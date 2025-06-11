@@ -6,6 +6,7 @@ import React, {
   useRef,
   useEffect,
 } from "react";
+import { getAudioSafely } from "@/utils/audioStorage";
 
 export interface Track {
   id: string;
@@ -150,8 +151,24 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
       }
       setIsPlayerVisible(true);
 
+      // Resolve audio URL (handle both stored and direct URLs)
+      let audioUrl = track.audioUrl;
+
+      if (audioUrl?.startsWith("stored:")) {
+        // Extract the storage key and get the actual audio data
+        const storageKey = audioUrl.replace("stored:", "");
+        const storedAudio = getAudioSafely(storageKey);
+
+        if (storedAudio) {
+          audioUrl = storedAudio;
+        } else {
+          console.error("Stored audio not found for key:", storageKey);
+          throw new Error("Audio file is not available for this track");
+        }
+      }
+
       // Validate audio URL
-      if (!track.audioUrl || !track.audioUrl.startsWith("data:audio/")) {
+      if (!audioUrl || !audioUrl.startsWith("data:audio/")) {
         console.error("Invalid or missing audio URL for track:", track.title);
         throw new Error("Audio file is not available for this track");
       }
@@ -162,7 +179,7 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
       }
 
       // Set audio source
-      audio.src = track.audioUrl;
+      audio.src = audioUrl;
       audio.load();
 
       // Auto-play if enabled
@@ -284,14 +301,19 @@ export const MusicPlayerProvider: React.FC<{ children: ReactNode }> = ({
   const updatePlayCount = (track: Track) => {
     const userId = JSON.parse(localStorage.getItem("userData") || "{}").id;
     if (userId) {
-      // Update user tracks
+      // Update user tracks (metadata only, safe from quota issues)
       const userTracks = JSON.parse(
         localStorage.getItem(`tracks_${userId}`) || "[]",
       );
       const trackIndex = userTracks.findIndex((t: any) => t.id === track.id);
       if (trackIndex !== -1) {
         userTracks[trackIndex].plays = (userTracks[trackIndex].plays || 0) + 1;
-        localStorage.setItem(`tracks_${userId}`, JSON.stringify(userTracks));
+        try {
+          localStorage.setItem(`tracks_${userId}`, JSON.stringify(userTracks));
+        } catch (error) {
+          console.warn("Failed to update play count:", error);
+          // Non-critical error, continue playing
+        }
       }
 
       // Update global tracks

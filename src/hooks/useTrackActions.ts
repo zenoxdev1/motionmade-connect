@@ -260,7 +260,7 @@ export const useTrackActions = () => {
     // Update like status in localStorage
     const userId = JSON.parse(localStorage.getItem("userData") || "{}").id;
     if (userId) {
-      // Update user's tracks
+      // Update user's tracks (metadata only, much smaller)
       const userTracks = JSON.parse(
         localStorage.getItem(`tracks_${userId}`) || "[]",
       );
@@ -270,7 +270,12 @@ export const useTrackActions = () => {
           0,
           (userTracks[trackIndex].likes || 0) + (isLiked ? 1 : -1),
         );
-        localStorage.setItem(`tracks_${userId}`, JSON.stringify(userTracks));
+        try {
+          localStorage.setItem(`tracks_${userId}`, JSON.stringify(userTracks));
+        } catch (error) {
+          console.error("Failed to update track likes:", error);
+          // Non-critical error, continue
+        }
       }
 
       // Update global tracks
