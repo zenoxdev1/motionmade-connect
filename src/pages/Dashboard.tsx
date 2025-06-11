@@ -16,11 +16,97 @@ import {
   Drum,
   Star,
   Clock,
+  Search,
+  User,
+  TrendingUp,
+  Heart,
+  MessageCircle,
+  Eye,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const [userStats, setUserStats] = useState({
+    tracksCount: 0,
+    connectionsCount: 0,
+    totalPlays: 0,
+    totalLikes: 0,
+    profileViews: 0,
+    messagesCount: 0,
+  });
+  const [recentTracks, setRecentTracks] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Load user statistics from localStorage
+    const loadUserStats = () => {
+      const userTracks = JSON.parse(
+        localStorage.getItem(`tracks_${user?.id}`) || "[]",
+      );
+      const connections = JSON.parse(
+        localStorage.getItem(`connections_${user?.id}`) || "[]",
+      );
+      const profileData = JSON.parse(
+        localStorage.getItem(`profile_${user?.id}`) || "{}",
+      );
+
+      const totalPlays = userTracks.reduce(
+        (sum: number, track: any) => sum + (track.plays || 0),
+        0,
+      );
+      const totalLikes = userTracks.reduce(
+        (sum: number, track: any) => sum + (track.likes || 0),
+        0,
+      );
+
+      setUserStats({
+        tracksCount: userTracks.length,
+        connectionsCount: connections.length + 23, // Base connections for demo
+        totalPlays: totalPlays + 1547, // Base plays for demo
+        totalLikes: totalLikes + 234, // Base likes for demo
+        profileViews: 127 + userTracks.length * 15, // Calculated views
+        messagesCount: 8, // Demo messages
+      });
+
+      setRecentTracks(userTracks.slice(-3).reverse()); // Last 3 tracks
+
+      // Generate recent activity based on user data
+      const activities = [
+        {
+          type: "track_play",
+          message: `Your track "${userTracks[0]?.title || "Demo Track"}" was played 12 times`,
+          time: "2 hours ago",
+          icon: Play,
+        },
+        {
+          type: "new_connection",
+          message: "Sarah M. connected with you",
+          time: "4 hours ago",
+          icon: Users,
+        },
+        {
+          type: "track_like",
+          message: `Someone liked your track "${userTracks[0]?.title || "Demo Track"}"`,
+          time: "6 hours ago",
+          icon: Heart,
+        },
+        {
+          type: "profile_view",
+          message: "Your profile was viewed 5 times today",
+          time: "1 day ago",
+          icon: Eye,
+        },
+      ];
+
+      setRecentActivity(activities);
+    };
+
+    if (user) {
+      loadUserStats();
+    }
+  }, [user]);
 
   const handleSignOut = async () => {
     try {
@@ -139,23 +225,34 @@ const Dashboard = () => {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full justify-start bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload New Track
+                <Button
+                  className="w-full justify-start bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  asChild
+                >
+                  <Link to="/upload-track">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload New Track
+                  </Link>
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full justify-start border-purple-500/30 hover:bg-purple-500/10"
+                  asChild
                 >
-                  <Users className="w-4 h-4 mr-2" />
-                  Find Musicians
+                  <Link to="/find-musicians">
+                    <Search className="w-4 h-4 mr-2" />
+                    Find Musicians
+                  </Link>
                 </Button>
                 <Button
                   variant="outline"
                   className="w-full justify-start border-blue-500/30 hover:bg-blue-500/10"
+                  asChild
                 >
-                  <Play className="w-4 h-4 mr-2" />
-                  Start Jam Session
+                  <Link to="/profile">
+                    <User className="w-4 h-4 mr-2" />
+                    Edit Profile
+                  </Link>
                 </Button>
               </CardContent>
             </Card>
@@ -171,66 +268,117 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
-                    <Play className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Listened to "Jazz Fusion Mix"</p>
-                    <p className="text-sm text-muted-foreground">2 hours ago</p>
-                  </div>
-                </div>
+                {recentActivity.map((activity, index) => {
+                  const IconComponent = activity.icon;
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20"
+                    >
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
+                        <IconComponent className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{activity.message}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {activity.time}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
 
-                <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
-                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <Users className="w-5 h-5 text-white" />
+                {recentActivity.length === 0 && (
+                  <div className="text-center p-6">
+                    <Clock className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                    <p className="text-muted-foreground">No recent activity</p>
+                    <p className="text-sm text-muted-foreground">
+                      Upload a track or connect with musicians to get started!
+                    </p>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Connected with Sarah M.</p>
-                    <p className="text-sm text-muted-foreground">Yesterday</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
-                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center">
-                    <Star className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium">Received 5-star review</p>
-                    <p className="text-sm text-muted-foreground">3 days ago</p>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Stats */}
             <Card className="border-blue-500/20">
               <CardHeader>
-                <CardTitle>Your Stats</CardTitle>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="w-5 h-5 mr-2" />
+                  Your Stats
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-400">12</div>
+                    <div className="text-2xl font-bold text-purple-400">
+                      {userStats.tracksCount}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       Tracks Shared
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-400">45</div>
+                    <div className="text-2xl font-bold text-blue-400">
+                      {userStats.connectionsCount}
+                    </div>
                     <div className="text-sm text-muted-foreground">
                       Connections
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-400">8</div>
+                    <div className="text-2xl font-bold text-purple-400">
+                      {userStats.totalPlays}
+                    </div>
                     <div className="text-sm text-muted-foreground">
-                      Collaborations
+                      Total Plays
                     </div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-400">4.8</div>
-                    <div className="text-sm text-muted-foreground">Rating</div>
+                    <div className="text-2xl font-bold text-blue-400">
+                      {userStats.totalLikes}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Total Likes
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Additional Stats */}
+            <Card className="border-purple-500/20">
+              <CardHeader>
+                <CardTitle>This Month</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-2">
+                      <Eye className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">Profile Views</span>
+                    </div>
+                    <span className="font-semibold">
+                      {userStats.profileViews}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-2">
+                      <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">Messages</span>
+                    </div>
+                    <span className="font-semibold">
+                      {userStats.messagesCount}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-2">
+                      <Star className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm">New Likes</span>
+                    </div>
+                    <span className="font-semibold">
+                      +{Math.floor(userStats.totalLikes * 0.3)}
+                    </span>
                   </div>
                 </div>
               </CardContent>
