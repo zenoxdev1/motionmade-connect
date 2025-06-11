@@ -43,6 +43,8 @@ interface Track {
   plays: number;
   likes: number;
   artist: string;
+  audioUrl?: string;
+  trackImage?: string;
 }
 
 const MyTracks = () => {
@@ -87,18 +89,20 @@ const MyTracks = () => {
           title: track.title,
           artist: track.artist,
           duration: track.duration,
-          trackImage: track.trackImage,
+          trackImage: track.trackImage || "",
           allowDownload: track.allowDownload,
           likes: track.likes,
+          audioUrl: track.audioUrl || "",
         },
         tracks.map((t) => ({
           id: t.id,
           title: t.title,
           artist: t.artist,
           duration: t.duration,
-          trackImage: t.trackImage,
+          trackImage: t.trackImage || "",
           allowDownload: t.allowDownload,
           likes: t.likes,
+          audioUrl: t.audioUrl || "",
         })),
       );
     }
