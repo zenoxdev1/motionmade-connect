@@ -538,7 +538,8 @@ const Profile = () => {
                                 Username is available!
                               </p>
                             )}
-                            {!profileData.username && (
+                            {(!profileData.username ||
+                              profileData.username.length === 0) && (
                               <Button
                                 variant="ghost"
                                 size="sm"
