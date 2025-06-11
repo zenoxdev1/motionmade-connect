@@ -55,8 +55,16 @@ export const useTrackActions = () => {
       let filename: string;
 
       if (track.audioUrl) {
-        // Use the actual audio URL
-        downloadUrl = track.audioUrl;
+        // Handle data URLs (base64 encoded files) or regular URLs
+        if (track.audioUrl.startsWith("data:")) {
+          // Convert data URL to blob for download
+          const response = await fetch(track.audioUrl);
+          const blob = await response.blob();
+          downloadUrl = URL.createObjectURL(blob);
+        } else {
+          // Use the actual audio URL
+          downloadUrl = track.audioUrl;
+        }
         filename = track.fileName || `${track.title} - ${track.artist}.mp3`;
       } else {
         // Fallback: Create a demo audio file
