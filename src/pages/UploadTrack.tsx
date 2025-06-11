@@ -612,13 +612,13 @@ const UploadTrack = () => {
                         type="number"
                         min="60"
                         max="200"
-                        value={trackData.bpm}
-                        onChange={(e) =>
-                          handleInputChange(
-                            "bpm",
-                            parseInt(e.target.value) || 120,
-                          )
-                        }
+                        value={trackData.bpm.toString()}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value);
+                          if (!isNaN(value) && value >= 60 && value <= 200) {
+                            handleInputChange("bpm", value);
+                          }
+                        }}
                         placeholder="120"
                       />
                     </div>
