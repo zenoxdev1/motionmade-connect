@@ -337,74 +337,129 @@ const Dashboard = () => {
           {/* Quick Actions */}
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
               <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
-                <CardContent className="p-6">
+                <CardContent className="p-4">
                   <Link to="/upload-track" className="block">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mx-auto mb-2">
                         <Upload className="w-6 h-6 text-white" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold">Upload Track</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Share your music
-                        </p>
-                      </div>
+                      <h3 className="font-semibold text-sm">Upload Track</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Share your music
+                      </p>
                     </div>
                   </Link>
                 </CardContent>
               </Card>
 
-              <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
-                <CardContent className="p-6">
+              <Card className="group border-pink-500/20 bg-gradient-to-br from-card to-pink-950/10 hover:border-pink-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-4">
                   <Link to="/discover" className="block">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mx-auto mb-2">
                         <Compass className="w-6 h-6 text-white" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold">Discover</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Find new music & artists
-                        </p>
-                      </div>
+                      <h3 className="font-semibold text-sm">Discover</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Swipe through music
+                      </p>
                     </div>
                   </Link>
                 </CardContent>
               </Card>
 
-              <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
-                <CardContent className="p-6">
+              <Card className="group border-green-500/20 bg-gradient-to-br from-card to-green-950/10 hover:border-green-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-4">
                   <Link to="/find-musicians" className="block">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-teal-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mx-auto mb-2">
                         <Users className="w-6 h-6 text-white" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold">Find Musicians</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Connect with talent
-                        </p>
-                      </div>
+                      <h3 className="font-semibold text-sm">Find Musicians</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Network & collaborate
+                      </p>
                     </div>
                   </Link>
                 </CardContent>
               </Card>
 
-              <Card className="group border-purple-500/20 bg-gradient-to-br from-card to-purple-950/10 hover:border-purple-500/40 transition-all duration-300 hover:transform hover:scale-105">
-                <CardContent className="p-6">
+              <Card className="group border-blue-500/20 bg-gradient-to-br from-card to-blue-950/10 hover:border-blue-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-4">
+                  <Link to="/community" className="block">
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mx-auto mb-2">
+                        <Search className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="font-semibold text-sm">Browse Music</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Explore all tracks
+                      </p>
+                    </div>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              <Card className="group border-indigo-500/20 bg-gradient-to-br from-card to-indigo-950/10 hover:border-indigo-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-4">
+                  <div
+                    className="text-center cursor-pointer"
+                    onClick={() => {
+                      const userData = JSON.parse(
+                        localStorage.getItem("userData") || "{}",
+                      );
+                      if (userData.id) {
+                        const conversations = JSON.parse(
+                          localStorage.getItem(
+                            `conversations_${userData.id}`,
+                          ) || "[]",
+                        );
+                        const hasUnread = conversations.some(
+                          (conv: any) => conv.unreadCount > 0,
+                        );
+                        if (hasUnread) {
+                          window.location.href = "/find-musicians"; // Navigate to messages
+                        } else {
+                          toast({
+                            title: "No new messages",
+                            description:
+                              "Start a conversation with other musicians!",
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mx-auto mb-2 relative">
+                      <MessageCircle className="w-6 h-6 text-white" />
+                      {userStats.messagesCount > 0 && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                          {userStats.messagesCount}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-sm">Messages</h3>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {userStats.messagesCount > 0
+                        ? `${userStats.messagesCount} unread`
+                        : "Chat with others"}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="group border-orange-500/20 bg-gradient-to-br from-card to-orange-950/10 hover:border-orange-500/40 transition-all duration-300 hover:transform hover:scale-105">
+                <CardContent className="p-4">
                   <Link to="/my-tracks" className="block">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Music className="w-6 h-6 text-white" />
+                    <div className="text-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform mx-auto mb-2">
+                        <BarChart3 className="w-6 h-6 text-white" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold">My Tracks</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Manage your music
-                        </p>
-                      </div>
+                      <h3 className="font-semibold text-sm">Analytics</h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Track performance
+                      </p>
                     </div>
                   </Link>
                 </CardContent>

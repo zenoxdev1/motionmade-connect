@@ -22,6 +22,8 @@ import {
   Heart,
   MoreHorizontal,
   Maximize2,
+  Minimize2,
+  X,
   Music,
   AlertCircle,
 } from "lucide-react";
@@ -30,6 +32,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useTrackActions } from "@/hooks/useTrackActions";
 import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 import FullMusicPlayer from "./FullMusicPlayer";
+import {
+  storeAudioSafely,
+  getAudioSafely,
+  getStorageInfo,
+} from "@/utils/audioStorage";
 
 interface Track {
   id: string;
@@ -73,6 +80,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     duration,
     volume,
     isMuted,
+    isMinimized,
     pauseTrack,
     resumeTrack,
     setVolume,
@@ -80,6 +88,8 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     seekTo,
     nextTrack,
     previousTrack,
+    closePlayer,
+    minimizePlayer,
   } = useMusicPlayer();
 
   const [isShuffled, setIsShuffled] = useState(false);
@@ -108,10 +118,16 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const handlePlayPause = async () => {
     if (!currentTrack) return;
 
+    // Check for audio availability with better error messages
     if (audioError || !currentTrack.audioUrl) {
+      const storageInfo = getStorageInfo();
+      const isStorageFull = storageInfo.usagePercentage > 95;
+
       toast({
         title: "Audio unavailable",
-        description: "This track doesn't have a valid audio file.",
+        description: isStorageFull
+          ? "Storage is full. Try clearing some space and reloading the track."
+          : "This track doesn't have a valid audio file.",
         variant: "destructive",
       });
       return;
@@ -126,10 +142,17 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     } catch (error) {
       console.error("Play/pause error:", error);
       setAudioError(true);
+
+      // Try to get better error info
+      const storageInfo = getStorageInfo();
+      const errorMessage =
+        storageInfo.usagePercentage > 90
+          ? "Storage is nearly full. This may affect playback quality."
+          : "Unable to play this track. The audio file may be corrupted.";
+
       toast({
         title: "Playback Error",
-        description:
-          "Unable to play this track. The audio file may be corrupted.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -205,7 +228,11 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   return (
     <>
       {/* Compact Player UI */}
-      <Card className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 bg-gradient-to-r from-card via-card to-purple-950/10 backdrop-blur-md rounded-none">
+      <Card
+        className={`fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 bg-gradient-to-r from-card via-card to-purple-950/10 backdrop-blur-md rounded-none transition-all duration-300 ${
+          isMinimized ? "transform translate-y-16" : ""
+        }`}
+      >
         <div className="px-4 py-3">
           {/* Progress Bar */}
           <div className="mb-3">
@@ -349,6 +376,16 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
                   />
                 </Button>
 
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={closePlayer}
+                  className="text-muted-foreground hover:text-red-500"
+                  title="Close player"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm">
@@ -369,6 +406,17 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
                     <DropdownMenuItem onClick={openFullPlayer}>
                       <Maximize2 className="w-4 h-4 mr-2" />
                       Full Player
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={minimizePlayer}>
+                      <Minimize2 className="w-4 h-4 mr-2" />
+                      Minimize
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={closePlayer}
+                      className="text-red-500"
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Close Player
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

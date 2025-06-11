@@ -235,6 +235,68 @@ export const checkStorageSpace = (requiredSpace: number): boolean => {
 };
 
 /**
+ * Optimizes audio data for storage by reducing quality if needed
+ */
+export const optimizeAudioForStorage = async (
+  audioUrl: string,
+  maxSize: number = 10 * 1024 * 1024,
+): Promise<string> => {
+  const currentSize = new Blob([audioUrl]).size;
+
+  if (currentSize <= maxSize) {
+    return audioUrl; // No optimization needed
+  }
+
+  // For now, return original - in a real app you might compress the audio
+  console.warn(
+    `Audio file is ${formatFileSize(currentSize)}, larger than recommended ${formatFileSize(maxSize)}`,
+  );
+  return audioUrl;
+};
+
+/**
+ * Validates audio storage capacity before upload
+ */
+export const validateStorageCapacity = (
+  audioSize: number,
+): { canStore: boolean; reason?: string } => {
+  const MAX_SINGLE_FILE = 10 * 1024 * 1024; // 10MB
+  const MAX_TOTAL_STORAGE = 50 * 1024 * 1024; // 50MB
+
+  if (audioSize > MAX_SINGLE_FILE) {
+    return {
+      canStore: false,
+      reason: `File too large (${formatFileSize(audioSize)}). Maximum size is ${formatFileSize(MAX_SINGLE_FILE)}.`,
+    };
+  }
+
+  // Check current storage usage
+  let currentUsage = 0;
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith("tracks_") || key.includes("audio_"))) {
+        const value = localStorage.getItem(key);
+        if (value) {
+          currentUsage += new Blob([value]).size;
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Failed to calculate storage usage:", error);
+  }
+
+  if (currentUsage + audioSize > MAX_TOTAL_STORAGE) {
+    return {
+      canStore: false,
+      reason: `Not enough storage space. Would use ${formatFileSize(currentUsage + audioSize)} of ${formatFileSize(MAX_TOTAL_STORAGE)} limit.`,
+    };
+  }
+
+  return { canStore: true };
+};
+
+/**
  * Gets audio format from data URL
  */
 export const getAudioFormat = (dataUrl: string): string => {

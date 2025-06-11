@@ -307,9 +307,11 @@ const FullMusicPlayer: React.FC<FullMusicPlayerProps> = ({
               <DialogTitle className="text-2xl font-bold">
                 Now Playing
               </DialogTitle>
-              <Button variant="ghost" size="sm" onClick={onClose}>
-                <X className="w-5 h-5" />
-              </Button>
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" size="sm" onClick={onClose}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
             </div>
           </DialogHeader>
 
