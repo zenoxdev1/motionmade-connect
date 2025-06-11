@@ -46,28 +46,11 @@ interface TrackData {
   duration: number;
 }
 
-// Global audio player state for persistent playback
-let globalAudioElement: HTMLAudioElement | null = null;
-let globalAudioFile: File | null = null;
-
-// Initialize global audio element
-const initializeGlobalAudio = () => {
-  if (!globalAudioElement) {
-    globalAudioElement = new Audio();
-    globalAudioElement.preload = "metadata";
-
-    // Add error handling
-    globalAudioElement.addEventListener("error", (e) => {
-      console.error("Global audio error:", e);
-    });
-  }
-  return globalAudioElement;
-};
-
 const UploadTrack = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -141,54 +124,39 @@ const UploadTrack = () => {
     "Bm",
   ];
 
-  // Initialize or maintain global audio element
+  // Audio setup and playback
   useEffect(() => {
-    const audio = initializeGlobalAudio();
+    const audio = audioRef.current;
+    if (!audio) return;
 
-    const handleTimeUpdate = () => {
-      if (audio) {
-        setCurrentTime(audio.currentTime || 0);
-      }
-    };
-
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime || 0);
     const handleEnded = () => setIsPlaying(false);
     const handlePause = () => setIsPlaying(false);
     const handlePlay = () => setIsPlaying(true);
     const handleError = (e: any) => {
       console.error("Audio playback error:", e);
       setIsPlaying(false);
+      toast({
+        title: "Playback error",
+        description: "Could not play audio file.",
+        variant: "destructive",
+      });
     };
 
-    // Add event listeners
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("pause", handlePause);
     audio.addEventListener("play", handlePlay);
     audio.addEventListener("error", handleError);
 
-    // Sync playing state with global audio
-    setIsPlaying(!audio.paused && audio.src !== "");
-
     return () => {
-      // Clean up event listeners but don't destroy audio for persistence
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("play", handlePlay);
       audio.removeEventListener("error", handleError);
     };
-  }, []);
-
-  // Sync current time periodically
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (globalAudioElement && !globalAudioElement.paused) {
-        setCurrentTime(globalAudioElement.currentTime);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  }, [toast]);
 
   const handleInputChange = useCallback(
     (field: keyof TrackData, value: string | boolean | number) => {
@@ -196,13 +164,25 @@ const UploadTrack = () => {
         ...prev,
         [field]: value,
       }));
-      setUploadError(null); // Clear any previous errors
+      setUploadError(null);
     },
     [],
   );
 
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result);
+      };
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleFileSelect = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
 
@@ -229,10 +209,10 @@ const UploadTrack = () => {
         return;
       }
 
-      // Validate file size (max 25MB to avoid localStorage issues)
-      const maxSize = 25 * 1024 * 1024;
+      // Validate file size (max 20MB)
+      const maxSize = 20 * 1024 * 1024;
       if (file.size > maxSize) {
-        const error = "Please select a file smaller than 25MB.";
+        const error = "Please select a file smaller than 20MB.";
         setUploadError(error);
         toast({
           title: "File too large",
@@ -242,73 +222,50 @@ const UploadTrack = () => {
         return;
       }
 
-      // Stop current audio if playing different file
-      if (globalAudioElement && globalAudioFile && globalAudioFile !== file) {
-        globalAudioElement.pause();
-        setIsPlaying(false);
-      }
-
       setTrackData((prev) => ({
         ...prev,
         file,
-        title: prev.title || file.name.replace(/\.[^/.]+$/, ""), // Set title from filename if empty
+        title: prev.title || file.name.replace(/\.[^/.]+$/, ""),
       }));
 
-      // Set global audio file for persistent playback
-      globalAudioFile = file;
+      // Set up audio preview
+      const audio = audioRef.current;
+      if (audio) {
+        const audioUrl = URL.createObjectURL(file);
+        audio.src = audioUrl;
+        audio.load();
 
-      // Get audio duration
-      const audio = new Audio();
-      audio.addEventListener("loadedmetadata", () => {
-        setTrackData((prev) => ({
-          ...prev,
-          duration: Math.round(audio.duration),
-        }));
-        URL.revokeObjectURL(audio.src); // Clean up
-      });
-      audio.addEventListener("error", () => {
-        console.warn("Could not load audio metadata");
-        // Use default duration if metadata loading fails
-        setTrackData((prev) => ({
-          ...prev,
-          duration: 180, // Default 3 minutes
-        }));
-      });
-      audio.src = URL.createObjectURL(file);
+        // Get duration
+        audio.addEventListener("loadedmetadata", () => {
+          setTrackData((prev) => ({
+            ...prev,
+            duration: Math.round(audio.duration),
+          }));
+        });
+      }
     },
     [toast],
   );
 
   const handlePlayPause = useCallback(() => {
-    if (!trackData.file || !globalAudioElement) return;
+    if (!trackData.file || !audioRef.current) return;
 
-    try {
-      if (isPlaying) {
-        globalAudioElement.pause();
-      } else {
-        // Only set new source if it's different file
-        if (globalAudioFile !== trackData.file) {
-          const audioUrl = URL.createObjectURL(trackData.file);
-          globalAudioElement.src = audioUrl;
-          globalAudioFile = trackData.file;
+    const audio = audioRef.current;
 
-          // Clean up previous URL
-          if (
-            globalAudioElement.src &&
-            globalAudioElement.src.startsWith("blob:")
-          ) {
-            const oldUrl = globalAudioElement.src;
-            setTimeout(() => URL.revokeObjectURL(oldUrl), 1000);
-          }
-        }
-        globalAudioElement.play();
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      if (!audio.src) {
+        const audioUrl = URL.createObjectURL(trackData.file);
+        audio.src = audioUrl;
       }
-    } catch (error) {
-      console.error("Audio playback error:", error);
-      toast({
-        title: "Playback error",
-        description: "Could not play audio file.",
-        variant: "destructive",
+      audio.play().catch((error) => {
+        console.error("Playback failed:", error);
+        toast({
+          title: "Playback error",
+          description: "Could not play audio file.",
+          variant: "destructive",
+        });
       });
     }
   }, [trackData.file, isPlaying, toast]);
@@ -320,7 +277,7 @@ const UploadTrack = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
-  const checkLocalStorageSpace = () => {
+  const checkStorageSpace = () => {
     try {
       const testKey = "storage_test";
       const testData = "a".repeat(1024 * 1024); // 1MB test
@@ -355,8 +312,7 @@ const UploadTrack = () => {
       return;
     }
 
-    // Check if we have enough storage space
-    if (!checkLocalStorageSpace()) {
+    if (!checkStorageSpace()) {
       const error =
         "Not enough storage space. Try clearing browser data or use a smaller file.";
       setUploadError(error);
@@ -373,42 +329,39 @@ const UploadTrack = () => {
     setUploadError(null);
 
     try {
-      // Simulate upload progress
+      // Progress simulation
       const progressInterval = setInterval(() => {
         setUploadProgress((prev) => {
-          if (prev >= 90) {
-            return prev; // Stop at 90% until actual upload completes
-          }
+          if (prev >= 90) return prev;
           return prev + Math.random() * 10;
         });
       }, 200);
 
-      // Create audio URL for storage
+      // Convert file to base64 for reliable storage
       let audioUrl = "";
       try {
-        // For smaller files, store as base64
-        if (trackData.file.size < 10 * 1024 * 1024) {
-          // 10MB
-          audioUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = () => reject(new Error("Failed to read file"));
-            reader.readAsDataURL(trackData.file!);
-          });
-        } else {
-          // For larger files, create a blob URL (will work until page refresh)
-          audioUrl = URL.createObjectURL(trackData.file);
+        toast({
+          title: "Processing audio...",
+          description: "Converting audio file for storage.",
+        });
+
+        audioUrl = await convertFileToBase64(trackData.file);
+
+        // Verify the base64 data is valid
+        if (!audioUrl || !audioUrl.startsWith("data:audio/")) {
+          throw new Error("Invalid audio data");
         }
+
+        setUploadProgress(70);
       } catch (fileError) {
-        console.error("File processing error:", fileError);
-        audioUrl = ""; // Continue without audio URL
+        console.error("File conversion error:", fileError);
+        throw new Error("Failed to process audio file");
       }
 
-      // Complete the progress
       clearInterval(progressInterval);
       setUploadProgress(95);
 
-      // Save track data to localStorage
+      // Create track object
       const track = {
         id: Date.now().toString(),
         userId: user.id,
@@ -431,7 +384,7 @@ const UploadTrack = () => {
         duration: trackData.duration || 180,
         fileSize: trackData.file.size,
         fileName: trackData.file.name,
-        audioUrl: audioUrl,
+        audioUrl: audioUrl, // Base64 encoded audio
         uploadDate: new Date().toISOString(),
         plays: 0,
         likes: 0,
@@ -439,39 +392,27 @@ const UploadTrack = () => {
       };
 
       // Store in user's tracks
-      try {
-        const userTracks = JSON.parse(
-          localStorage.getItem(`tracks_${user.id}`) || "[]",
-        );
-        userTracks.push(track);
-        localStorage.setItem(`tracks_${user.id}`, JSON.stringify(userTracks));
-      } catch (storageError) {
-        console.error("User tracks storage error:", storageError);
-        throw new Error("Failed to save to your track library");
-      }
+      const userTracks = JSON.parse(
+        localStorage.getItem(`tracks_${user.id}`) || "[]",
+      );
+      userTracks.push(track);
+      localStorage.setItem(`tracks_${user.id}`, JSON.stringify(userTracks));
 
       // If public, add to global tracks
       if (trackData.isPublic) {
-        try {
-          const allTracks = JSON.parse(
-            localStorage.getItem("allTracks") || "[]",
-          );
-          allTracks.push(track);
-          localStorage.setItem("allTracks", JSON.stringify(allTracks));
-        } catch (globalStorageError) {
-          console.error("Global tracks storage error:", globalStorageError);
-          // Don't fail the upload if global storage fails
-        }
+        const allTracks = JSON.parse(localStorage.getItem("allTracks") || "[]");
+        allTracks.push(track);
+        localStorage.setItem("allTracks", JSON.stringify(allTracks));
       }
 
       setUploadProgress(100);
 
       toast({
         title: "Track uploaded successfully! 🎵",
-        description: "Your track is now available on your profile.",
+        description: "Your track is now available and ready to play.",
       });
 
-      // Reset form but don't stop current playback
+      // Reset form
       setTrackData({
         title: "",
         description: "",
@@ -490,6 +431,14 @@ const UploadTrack = () => {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+
+      // Clear audio preview
+      if (audioRef.current) {
+        audioRef.current.src = "";
+        audioRef.current.load();
+      }
+      setCurrentTime(0);
+      setIsPlaying(false);
     } catch (error) {
       console.error("Upload error:", error);
       const errorMessage =
@@ -513,6 +462,8 @@ const UploadTrack = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-purple-950/20">
+      <audio ref={audioRef} preload="metadata" />
+
       {/* Navigation */}
       <nav className="border-b border-border bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -576,7 +527,7 @@ const UploadTrack = () => {
                         Drag and drop your audio file or click to browse
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        Supported formats: MP3, WAV, OGG, AAC (max 25MB)
+                        Supported formats: MP3, WAV, OGG, AAC (max 20MB)
                       </p>
                       <input
                         ref={fileInputRef}
@@ -609,7 +560,7 @@ const UploadTrack = () => {
                             size="sm"
                             onClick={handlePlayPause}
                           >
-                            {isPlaying && globalAudioFile === trackData.file ? (
+                            {isPlaying ? (
                               <Pause className="w-4 h-4" />
                             ) : (
                               <Play className="w-4 h-4" />
@@ -619,16 +570,6 @@ const UploadTrack = () => {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              // Stop current playback if this file is playing
-                              if (
-                                globalAudioElement &&
-                                globalAudioFile === trackData.file
-                              ) {
-                                globalAudioElement.pause();
-                                globalAudioElement.src = "";
-                                globalAudioFile = null;
-                              }
-
                               setTrackData((prev) => ({
                                 ...prev,
                                 file: null,
@@ -636,6 +577,12 @@ const UploadTrack = () => {
                               }));
                               if (fileInputRef.current)
                                 fileInputRef.current.value = "";
+                              if (audioRef.current) {
+                                audioRef.current.pause();
+                                audioRef.current.src = "";
+                              }
+                              setIsPlaying(false);
+                              setCurrentTime(0);
                             }}
                           >
                             <X className="w-4 h-4" />
@@ -643,8 +590,8 @@ const UploadTrack = () => {
                         </div>
                       </div>
 
-                      {/* Persistent audio progress bar */}
-                      {trackData.file && globalAudioFile === trackData.file && (
+                      {/* Audio progress bar */}
+                      {trackData.file && (
                         <div className="space-y-2">
                           <div className="w-full bg-muted rounded-full h-2">
                             <div
@@ -861,7 +808,7 @@ const UploadTrack = () => {
                   </div>
                   <div className="flex items-start space-x-2">
                     <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                    <span>Respect community guidelines and copyright laws</span>
+                    <span>Audio is stored securely for reliable playback</span>
                   </div>
                 </CardContent>
               </Card>

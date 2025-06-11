@@ -28,6 +28,7 @@ import {
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useTrackActions } from "@/hooks/useTrackActions";
+import FullMusicPlayer from "./FullMusicPlayer";
 
 interface Track {
   id: string;
@@ -39,6 +40,13 @@ interface Track {
   allowDownload?: boolean;
   likes?: number;
   audioUrl?: string;
+  genre?: string;
+  bpm?: number;
+  musicalKey?: string;
+  tags?: string[];
+  description?: string;
+  uploadDate?: string;
+  plays?: number;
 }
 
 interface MusicPlayerProps {
@@ -70,8 +78,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [audioError, setAudioError] = useState(false);
-  const [simulationInterval, setSimulationInterval] =
-    useState<NodeJS.Timeout | null>(null);
+  const [isFullPlayerOpen, setIsFullPlayerOpen] = useState(false);
 
   // Load audio when track changes
   useEffect(() => {
@@ -83,19 +90,31 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     setIsPlaying(false);
     setAudioError(false);
 
-    // Clear any existing simulation
-    if (simulationInterval) {
-      clearInterval(simulationInterval);
-      setSimulationInterval(null);
-    }
-
-    // Try to load real audio if available
+    // Check if we have a valid audio URL
     if (currentTrack.audioUrl && currentTrack.audioUrl.trim() !== "") {
-      console.log("Loading audio from URL:", currentTrack.audioUrl);
-      audio.src = currentTrack.audioUrl;
-      audio.load();
+      console.log(
+        "Loading audio from URL:",
+        currentTrack.audioUrl.substring(0, 50) + "...",
+      );
+
+      // Validate base64 data URL
+      if (currentTrack.audioUrl.startsWith("data:audio/")) {
+        try {
+          audio.src = currentTrack.audioUrl;
+          audio.load();
+        } catch (error) {
+          console.error("Error setting audio source:", error);
+          setAudioError(true);
+          setIsLoading(false);
+          setDuration(currentTrack.duration);
+        }
+      } else {
+        console.warn("Invalid audio URL format for track:", currentTrack.title);
+        setAudioError(true);
+        setIsLoading(false);
+        setDuration(currentTrack.duration);
+      }
     } else {
-      // No audio URL available, set up for demo mode
       console.log("No audio URL available for track:", currentTrack.title);
       setIsLoading(false);
       setDuration(currentTrack.duration);
@@ -121,7 +140,12 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       setAudioError(true);
       setDuration(currentTrack.duration);
 
-      // Don't show error toast immediately, wait for user to try playing
+      toast({
+        title: "Audio loading failed",
+        description:
+          "Could not load audio file. The track may be corrupted or unsupported.",
+        variant: "destructive",
+      });
     };
 
     audio.addEventListener("loadeddata", handleLoadedData);
@@ -133,24 +157,20 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       audio.removeEventListener("canplay", handleCanPlay);
       audio.removeEventListener("error", handleError);
     };
-  }, [currentTrack, toast, simulationInterval]);
+  }, [currentTrack, toast]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const updateTime = () => {
-      if (!audioError) {
+      if (!audioError && audio.src) {
         setCurrentTime(audio.currentTime);
       }
     };
 
     const handleEnded = () => {
       setIsPlaying(false);
-      if (simulationInterval) {
-        clearInterval(simulationInterval);
-        setSimulationInterval(null);
-      }
 
       if (repeatMode === "one") {
         // Restart the track
@@ -158,8 +178,6 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
           audio.currentTime = 0;
           audio.play();
           setIsPlaying(true);
-        } else {
-          startSimulation();
         }
       } else if (repeatMode === "all" || playlist.length > 1) {
         handleNext();
@@ -180,7 +198,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       audio.removeEventListener("pause", handlePause);
       audio.removeEventListener("play", handlePlay);
     };
-  }, [repeatMode, playlist.length, audioError, simulationInterval]);
+  }, [repeatMode, playlist.length, audioError]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -188,38 +206,6 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       audio.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
-
-  const startSimulation = () => {
-    if (simulationInterval) {
-      clearInterval(simulationInterval);
-    }
-
-    setCurrentTime(0);
-    setIsPlaying(true);
-
-    const interval = setInterval(() => {
-      setCurrentTime((prev) => {
-        const newTime = prev + 1;
-        if (newTime >= duration) {
-          clearInterval(interval);
-          setSimulationInterval(null);
-          setIsPlaying(false);
-          return 0;
-        }
-        return newTime;
-      });
-    }, 1000);
-
-    setSimulationInterval(interval);
-  };
-
-  const stopSimulation = () => {
-    if (simulationInterval) {
-      clearInterval(simulationInterval);
-      setSimulationInterval(null);
-    }
-    setIsPlaying(false);
-  };
 
   const formatTime = (time: number) => {
     if (!time || isNaN(time)) return "0:00";
@@ -232,55 +218,34 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
 
+    if (audioError || !currentTrack.audioUrl) {
+      toast({
+        title: "Audio unavailable",
+        description: "This track doesn't have a valid audio file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       if (isPlaying) {
-        if (audioError || !audio.src) {
-          // Stop simulation
-          stopSimulation();
-        } else {
-          // Pause real audio
-          audio.pause();
-        }
+        audio.pause();
       } else {
-        if (audioError || !audio.src) {
-          // Show error message first time, then start simulation
-          if (!simulationInterval) {
-            toast({
-              title: "Audio unavailable",
-              description: "Playing in demo mode with track metadata only.",
-              variant: "destructive",
-            });
-          }
-          startSimulation();
-        } else {
-          // Try to play real audio
-          try {
-            await audio.play();
-          } catch (playError) {
-            console.error("Playback failed, starting simulation:", playError);
-            setAudioError(true);
-            toast({
-              title: "Audio playback failed",
-              description: "Playing in demo mode with track metadata only.",
-              variant: "destructive",
-            });
-            startSimulation();
-          }
+        // Ensure audio source is set
+        if (!audio.src && currentTrack.audioUrl) {
+          audio.src = currentTrack.audioUrl;
         }
+        await audio.play();
       }
     } catch (error) {
       console.error("Play/pause error:", error);
+      setAudioError(true);
       toast({
         title: "Playback Error",
-        description: "Unable to play this track. Using demo mode.",
+        description:
+          "Unable to play this track. The audio file may be corrupted.",
         variant: "destructive",
       });
-
-      if (isPlaying) {
-        stopSimulation();
-      } else {
-        startSimulation();
-      }
     }
   };
 
@@ -318,11 +283,6 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     }
 
     if (playlist[nextIndex]) {
-      // Stop current simulation
-      if (simulationInterval) {
-        clearInterval(simulationInterval);
-        setSimulationInterval(null);
-      }
       onTrackChange(playlist[nextIndex]);
     }
   };
@@ -338,11 +298,6 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     }
 
     if (playlist[prevIndex]) {
-      // Stop current simulation
-      if (simulationInterval) {
-        clearInterval(simulationInterval);
-        setSimulationInterval(null);
-      }
       onTrackChange(playlist[prevIndex]);
     }
   };
@@ -367,6 +322,10 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
     }
   };
 
+  const openFullPlayer = () => {
+    setIsFullPlayerOpen(true);
+  };
+
   if (!isVisible || !currentTrack) return null;
 
   const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -376,7 +335,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       {/* Audio element for actual playback */}
       <audio ref={audioRef} preload="metadata" crossOrigin="anonymous" />
 
-      {/* Player UI */}
+      {/* Compact Player UI */}
       <Card className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 bg-gradient-to-r from-card via-card to-purple-950/10 backdrop-blur-md rounded-none">
         <div className="px-4 py-3">
           {/* Progress Bar */}
@@ -387,7 +346,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
               max={100}
               step={0.1}
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || audioError}
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>{formatTime(currentTime)}</span>
@@ -397,7 +356,10 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
           <div className="flex items-center justify-between">
             {/* Track Info */}
-            <div className="flex items-center space-x-3 flex-1 min-w-0">
+            <div
+              className="flex items-center space-x-3 flex-1 min-w-0 cursor-pointer"
+              onClick={openFullPlayer}
+            >
               <Avatar className="w-12 h-12 rounded-lg">
                 <AvatarImage
                   src={currentTrack.trackImage}
@@ -412,15 +374,15 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
                   {currentTrack.title}
                   {audioError && (
                     <AlertCircle
-                      className="w-4 h-4 ml-2 text-yellow-500"
-                      title="Audio unavailable - demo mode"
+                      className="w-4 h-4 ml-2 text-red-500"
+                      title="Audio unavailable"
                     />
                   )}
                 </h4>
                 <p className="text-sm text-muted-foreground truncate">
                   {currentTrack.artist}
                   {audioError && (
-                    <span className="text-yellow-500 ml-2">(Demo Mode)</span>
+                    <span className="text-red-500 ml-2">(No Audio)</span>
                   )}
                 </p>
               </div>
@@ -448,7 +410,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
                 <Button
                   onClick={handlePlayPause}
                   size="sm"
-                  disabled={isLoading}
+                  disabled={isLoading || audioError}
                   className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50"
                 >
                   {isLoading ? (
@@ -537,7 +499,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
                         Download
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={openFullPlayer}>
                       <Maximize2 className="w-4 h-4 mr-2" />
                       Full Player
                     </DropdownMenuItem>
@@ -548,6 +510,15 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
           </div>
         </div>
       </Card>
+
+      {/* Full Music Player */}
+      <FullMusicPlayer
+        currentTrack={currentTrack}
+        playlist={playlist}
+        isOpen={isFullPlayerOpen}
+        onClose={() => setIsFullPlayerOpen(false)}
+        onTrackChange={onTrackChange}
+      />
     </>
   );
 };
