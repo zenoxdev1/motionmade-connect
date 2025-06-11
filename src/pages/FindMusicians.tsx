@@ -34,7 +34,6 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 
 interface Musician {
   id: string;
