@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useTrackActions } from "@/hooks/useTrackActions";
 
 interface Track {
   id: string;
@@ -36,6 +37,7 @@ interface Track {
   fileName?: string;
   allowDownload?: boolean;
   likes?: number;
+  audioUrl?: string;
 }
 
 interface MusicPlayerProps {
@@ -54,38 +56,98 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   onTrackChange,
 }) => {
   const { toast } = useToast();
+  const { shareTrack, downloadTrack, likeTrack } = useTrackActions();
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [isShuffled, setIsShuffled] = useState(false);
   const [repeatMode, setRepeatMode] = useState<"none" | "one" | "all">("none");
   const [isLiked, setIsLiked] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load audio when track changes
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !currentTrack) return;
+
+    setIsLoading(true);
+    setCurrentTime(0);
+    setIsPlaying(false);
+
+    // For demo purposes, we'll use a sample audio URL
+    // In a real app, you'd get the actual audio file URL from your server
+    const audioUrl =
+      currentTrack.audioUrl ||
+      `https://www.soundjay.com/misc/sounds/bell-ringing-05.wav`;
+    audio.src = audioUrl;
+    audio.load();
+
+    const handleLoadedData = () => {
+      setDuration(audio.duration || currentTrack.duration);
+      setIsLoading(false);
+    };
+
+    const handleCanPlay = () => {
+      setIsLoading(false);
+    };
+
+    const handleError = () => {
+      setIsLoading(false);
+      // For demo, just use duration from track metadata
+      setDuration(currentTrack.duration);
+      toast({
+        title: "Audio unavailable",
+        description: "Playing in demo mode with track metadata only.",
+      });
+    };
+
+    audio.addEventListener("loadeddata", handleLoadedData);
+    audio.addEventListener("canplay", handleCanPlay);
+    audio.addEventListener("error", handleError);
+
+    return () => {
+      audio.removeEventListener("loadeddata", handleLoadedData);
+      audio.removeEventListener("canplay", handleCanPlay);
+      audio.removeEventListener("error", handleError);
+    };
+  }, [currentTrack, toast]);
 
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
     const updateTime = () => setCurrentTime(audio.currentTime);
+
     const handleEnded = () => {
+      setIsPlaying(false);
       if (repeatMode === "one") {
         audio.currentTime = 0;
         audio.play();
-      } else {
+        setIsPlaying(true);
+      } else if (repeatMode === "all" || playlist.length > 1) {
         handleNext();
       }
     };
 
+    const handlePause = () => setIsPlaying(false);
+    const handlePlay = () => setIsPlaying(true);
+
     audio.addEventListener("timeupdate", updateTime);
     audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("play", handlePlay);
 
     return () => {
       audio.removeEventListener("timeupdate", updateTime);
       audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("play", handlePlay);
     };
-  }, [repeatMode]);
+  }, [repeatMode, playlist.length]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -95,32 +157,59 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   }, [volume, isMuted]);
 
   const formatTime = (time: number) => {
+    if (!time || isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     const audio = audioRef.current;
     if (!audio || !currentTrack) return;
 
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      // In a real app, you'd load the actual audio file
-      // For demo, we'll simulate playback
-      audio.play().catch(() => {
-        // Fallback for demo - just toggle play state
-        console.log("Playing:", currentTrack.title);
-      });
+    try {
+      if (isPlaying) {
+        audio.pause();
+      } else {
+        await audio.play();
+      }
+    } catch (error) {
+      // If real audio fails, simulate playback for demo
+      console.log("Audio playback failed, simulating:", error);
+      setIsPlaying(!isPlaying);
+
+      if (!isPlaying) {
+        // Simulate track progress for demo
+        const simulateProgress = () => {
+          setCurrentTime((prev) => {
+            const newTime = prev + 1;
+            if (newTime >= duration) {
+              setIsPlaying(false);
+              return 0;
+            }
+            return newTime;
+          });
+        };
+
+        const interval = setInterval(simulateProgress, 1000);
+
+        // Store interval reference to clean up later
+        if (audio) {
+          (audio as any).simulationInterval = interval;
+        }
+      } else {
+        // Clear simulation interval
+        if (audio && (audio as any).simulationInterval) {
+          clearInterval((audio as any).simulationInterval);
+        }
+      }
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (value: number[]) => {
     const audio = audioRef.current;
-    if (audio && currentTrack) {
-      const newTime = (value[0] / 100) * currentTrack.duration;
+    if (audio && duration > 0) {
+      const newTime = (value[0] / 100) * duration;
       audio.currentTime = newTime;
       setCurrentTime(newTime);
     }
@@ -171,49 +260,32 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
   const handleShare = () => {
     if (currentTrack) {
-      navigator.clipboard.writeText(
-        `Check out "${currentTrack.title}" by ${currentTrack.artist} on Motion Connect!`,
-      );
-      toast({
-        title: "Link copied!",
-        description: "Track link has been copied to clipboard.",
-      });
+      shareTrack(currentTrack);
     }
   };
 
   const handleDownload = () => {
-    if (currentTrack?.allowDownload) {
-      // In a real app, you'd download the actual file
-      toast({
-        title: "Download started",
-        description: `Downloading "${currentTrack.title}"...`,
-      });
-    } else {
-      toast({
-        title: "Download not available",
-        description: "The artist hasn't enabled downloads for this track.",
-        variant: "destructive",
-      });
+    if (currentTrack) {
+      downloadTrack(currentTrack);
     }
   };
 
   const handleLike = () => {
-    setIsLiked(!isLiked);
-    toast({
-      title: isLiked ? "Removed from favorites" : "Added to favorites",
-      description: `"${currentTrack?.title}" ${isLiked ? "removed from" : "added to"} your favorites.`,
-    });
+    if (currentTrack) {
+      const newLikedState = !isLiked;
+      setIsLiked(newLikedState);
+      likeTrack(currentTrack.id, newLikedState);
+    }
   };
 
   if (!isVisible || !currentTrack) return null;
 
-  const progressPercentage =
-    currentTrack.duration > 0 ? (currentTime / currentTrack.duration) * 100 : 0;
+  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <>
       {/* Audio element for actual playback */}
-      <audio ref={audioRef} preload="metadata" />
+      <audio ref={audioRef} preload="metadata" crossOrigin="anonymous" />
 
       {/* Player UI */}
       <Card className="fixed bottom-0 left-0 right-0 z-50 border-t border-purple-500/20 bg-gradient-to-r from-card via-card to-purple-950/10 backdrop-blur-md rounded-none">
@@ -226,10 +298,11 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
               max={100}
               step={0.1}
               className="w-full"
+              disabled={isLoading}
             />
             <div className="flex justify-between text-xs text-muted-foreground mt-1">
               <span>{formatTime(currentTime)}</span>
-              <span>{formatTime(currentTrack.duration)}</span>
+              <span>{formatTime(duration)}</span>
             </div>
           </div>
 
@@ -264,21 +337,34 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
                 >
                   <Shuffle className="w-4 h-4" />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handlePrevious}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrevious}
+                  disabled={playlist.length <= 1}
+                >
                   <SkipBack className="w-4 h-4" />
                 </Button>
                 <Button
                   onClick={handlePlayPause}
                   size="sm"
-                  className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  disabled={isLoading}
+                  className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:opacity-50"
                 >
-                  {isPlaying ? (
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : isPlaying ? (
                     <Pause className="w-5 h-5" />
                   ) : (
                     <Play className="w-5 h-5" />
                   )}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={handleNext}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNext}
+                  disabled={playlist.length <= 1}
+                >
                   <SkipForward className="w-4 h-4" />
                 </Button>
                 <Button
