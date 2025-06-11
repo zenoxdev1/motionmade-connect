@@ -457,7 +457,7 @@ const Dashboard = () => {
                           (conv: any) => conv.unreadCount > 0,
                         );
                         if (hasUnread) {
-                          window.location.href = "/find-musicians"; // Navigate to messages
+                          window.location.href = "/musicians"; // Navigate to messages
                         } else {
                           toast({
                             title: "No new messages",

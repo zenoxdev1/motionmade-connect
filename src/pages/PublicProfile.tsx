@@ -216,7 +216,7 @@ const PublicProfile = () => {
               The requested user profile could not be found.
             </p>
             <Button asChild>
-              <Link to="/find-musicians">
+              <Link to="/musicians">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Browse Musicians
               </Link>
